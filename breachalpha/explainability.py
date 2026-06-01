@@ -34,6 +34,16 @@ BENCHMARK_NAMES = {
     "^GDAXI": "DAX",
     "^FCHI": "CAC 40",
     "^STOXX50E": "EURO STOXX 50",
+    "^GSPTSE": "S&P/TSX Composite",
+    "^AXJO": "S&P/ASX 200",
+    "^BVSP": "Bovespa",
+    "^KS11": "KOSPI",
+    "^KQ11": "KOSDAQ",
+    "^TWII": "TAIEX",
+    "^STI": "Straits Times Index",
+    "^AEX": "AEX",
+    "000001.SS": "SSE Composite",
+    "399001.SZ": "SZSE Component",
 }
 from .model import SEVERITY_LABELS, predict_severity
 

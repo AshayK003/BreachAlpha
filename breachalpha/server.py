@@ -29,7 +29,7 @@ from .stock_loader import (
     fetch_stock_data, fetch_market_data, fetch_stock_batch,
     get_cache_info, clear_cache, get_data_sources_status,
 )
-from .ticker_resolver import resolve_ticker
+from .ticker_resolver import resolve_ticker, detect_benchmark
 from .preprocessor import preprocess_dataset, PreprocessingResult, AnalysisConfig as PreprocessConfig
 from .explainability import generate_explanation, ExplainabilityReport
 from .data_sources import DataFetcher, FetcherConfig
@@ -280,7 +280,8 @@ async def score_company(req: ScoreRequest):
     if stock_data.empty:
         raise HTTPException(status_code=404, detail=f"No stock data available for {ticker}")
 
-    market_data = fetch_market_data(start="2015-01-01")
+    benchmark = detect_benchmark(ticker)
+    market_data = fetch_market_data(start="2015-01-01", benchmark=benchmark)
 
     event = BreachEvent(
         company_name=req.company,
@@ -290,6 +291,7 @@ async def score_company(req: ScoreRequest):
         breach_type=req.breach_type,
         stock_data=stock_data,
         market_data=market_data,
+        benchmark=benchmark,
     )
 
     features = compute_features(event)
@@ -373,13 +375,15 @@ async def score_auto(req: ScoreRequest):
     if stock_data.empty:
         raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
 
-    market_data = fetch_market_data(start="2015-01-01")
+    benchmark = detect_benchmark(ticker)
+    market_data = fetch_market_data(start="2015-01-01", benchmark=benchmark)
 
     event = BreachEvent(
         company_name=company_name, ticker=ticker,
         breach_date=pd.Timestamp(breach_date),
         pwn_count=records, breach_type=breach_type,
         stock_data=stock_data, market_data=market_data,
+        benchmark=benchmark,
     )
 
     features = compute_features(event)
@@ -676,7 +680,6 @@ async def upload_and_analyze(file: UploadFile = File(...)):
 
     stock_cache = fetch_stock_batch(list(set(tickers_needed)), start="2010-01-01")
 
-    market_data = fetch_market_data(start="2010-01-01")
     model = load_model()
     if model is None:
         model = _train_synthetic()["model"]
@@ -693,11 +696,14 @@ async def upload_and_analyze(file: UploadFile = File(...)):
                     stock_data = alt_data
                     stock_cache[alt_ticker] = alt_data
         if not stock_data.empty:
+            bm = detect_benchmark(ticker)
+            market_data = fetch_market_data(start="2010-01-01", benchmark=bm)
             events.append(BreachEvent(
                 company_name=company, ticker=ticker,
                 breach_date=pd.Timestamp(breach_date),
                 pwn_count=records, breach_type=breach_type,
                 stock_data=stock_data, market_data=market_data,
+                benchmark=bm,
             ))
 
     if not events:
@@ -748,7 +754,8 @@ async def explain_score(req: ExplainRequest):
     if stock_data.empty:
         raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
 
-    market_data = fetch_market_data(start="2015-01-01")
+    benchmark = detect_benchmark(ticker)
+    market_data = fetch_market_data(start="2015-01-01", benchmark=benchmark)
 
     event = BreachEvent(
         company_name=req.company,
@@ -758,6 +765,7 @@ async def explain_score(req: ExplainRequest):
         breach_type=req.breach_type,
         stock_data=stock_data,
         market_data=market_data,
+        benchmark=benchmark,
     )
 
     features = compute_features(event)
@@ -825,13 +833,15 @@ async def explain_auto(req: ScoreRequest):
     if stock_data.empty:
         raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
 
-    market_data = fetch_market_data(start="2015-01-01")
+    benchmark = detect_benchmark(ticker)
+    market_data = fetch_market_data(start="2015-01-01", benchmark=benchmark)
 
     event = BreachEvent(
         company_name=company_name, ticker=ticker,
         breach_date=pd.Timestamp(breach_date),
         pwn_count=records, breach_type=breach_type,
         stock_data=stock_data, market_data=market_data,
+        benchmark=benchmark,
     )
 
     features = compute_features(event)
@@ -1292,7 +1302,8 @@ async def score_with_config(req: ScoreRequest, config: AnalysisConfigRequest = N
     if stock_data.empty:
         raise HTTPException(status_code=404, detail=f"No stock data available for {ticker}")
 
-    market_data = fetch_market_data(start=config.start_date)
+    benchmark = detect_benchmark(ticker)
+    market_data = fetch_market_data(start=config.start_date, benchmark=benchmark)
 
     feature_config = FeatureConfig(
         estimation_window=config.estimation_window,
@@ -1313,6 +1324,7 @@ async def score_with_config(req: ScoreRequest, config: AnalysisConfigRequest = N
         breach_date=pd.Timestamp(req.breach_date),
         pwn_count=req.records_affected, breach_type=req.breach_type,
         stock_data=stock_data, market_data=market_data,
+        benchmark=benchmark,
     )
 
     features = compute_features(event, feature_config)
@@ -1437,7 +1449,6 @@ async def upload_analyze_with_config(file: UploadFile = File(...), config: Uploa
     tickers = [str(t) for t in df["ticker"].dropna().unique() if t]
     stock_cache = fetch_stock_batch(tickers, start=config.start_date if hasattr(config, 'start_date') else "2010-01-01")
 
-    market_data = fetch_market_data(start="2010-01-01")
     model = load_model()
     if model is None:
         model = _train_synthetic()["model"]
@@ -1472,11 +1483,14 @@ async def upload_analyze_with_config(file: UploadFile = File(...), config: Uploa
             ))
             continue
 
+        bm = detect_benchmark(ticker)
+        market_data = fetch_market_data(start="2010-01-01", benchmark=bm)
         events.append(BreachEvent(
             company_name=company, ticker=ticker,
             breach_date=pd.Timestamp(breach_date),
             pwn_count=records, breach_type=breach_type,
             stock_data=stock_data, market_data=market_data,
+            benchmark=bm,
         ))
 
     # Batch compute features (parallel)

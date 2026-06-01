@@ -273,3 +273,92 @@ def resolve_all(
     logger.info("Resolved %d/%d companies to tickers", resolved_count, len(results))
 
     return results
+
+
+# ── Benchmark Detection ───────────────────────────────────────────────
+
+# Map ticker suffixes (or bare tickers) to their primary market index
+_SUFFIX_TO_BENCHMARK: dict[str, str] = {
+    # India
+    "NS": "^NSEI",      # NSE / NIFTY 50
+    "BO": "^BSESN",     # BSE / SENSEX
+    "NSE": "^NSEI",
+    "BSE": "^BSESN",
+    # UK
+    "L": "^FTSE",       # FTSE 100
+    "LN": "^FTSE",
+    # Germany
+    "DE": "^GDAXI",     # DAX
+    "GR": "^GDAXI",
+    # France
+    "PA": "^FCHI",      # CAC 40
+    # Japan
+    "T": "^N225",       # Nikkei 225
+    "TY": "^N225",
+    # Hong Kong
+    "HK": "^HSI",       # Hang Seng
+    # China
+    "SS": "000001.SS",  # SSE Composite
+    "SZ": "399001.SZ",  # SZSE Component
+    # Canada
+    "TO": "^GSPTSE",    # S&P/TSX Composite
+    # Australia
+    "AX": "^AXJO",      # S&P/ASX 200
+    # Brazil
+    "SA": "^BVSP",      # Bovespa
+    # Korea
+    "KS": "^KS11",      # KOSPI
+    "KQ": "^KQ11",      # KOSDAQ
+    # Taiwan
+    "TW": "^TWII",      # TAIEX
+    # Singapore
+    "SI": "^STI",       # Straits Times Index
+    # Europe wide
+    "AS": "^STOXX50E",  # EURO STOXX 50
+}
+
+# Bare ticker overrides for well-known US-listed international tickers
+_BARE_TICKER_BENCHMARK: dict[str, str] = {
+    "BABA": "^IXIC",     # Alibaba — NASDAQ
+    "TCEHY": "^IXIC",    # Tencent — OTC, benchmark NASDAQ
+    "SSNLF": "^KS11",    # Samsung — OTC, benchmark KOSPI
+    "NIO": "^IXIC",      # NIO — NYSE, benchmark S&P 500
+    "SONY": "^N225",     # Sony — TYO, benchmark Nikkei
+    "TM": "^N225",       # Toyota — NYSE, but primary is Nikkei
+    "HMC": "^N225",      # Honda — NYSE, but primary is Nikkei
+    "SAP": "^GDAXI",     # SAP — NYSE, but primary is XETRA/DAX
+    "ASML": "^AEX",      # ASML — NASDAQ, but primary is Euronext
+    "NVS": "^N225",      # Novartis — Swiss
+    "RHHBY": "^GDAXI",   # Roche — Swiss/German
+    "AZN": "^FTSE",      # AstraZeneca — LSE
+}
+
+
+def detect_benchmark(ticker: str) -> str:
+    """Detect the appropriate market benchmark index for a given ticker.
+
+    Uses the ticker suffix to determine the exchange, then maps to the
+    primary index for that exchange. Falls back to S&P 500 for unknowns.
+
+    Examples:
+        "TCS.NS"       → "^NSEI"   (NIFTY 50)
+        "TATAPOWER.NS" → "^NSEI"   (NIFTY 50)
+        "RELIANCE.BO"  → "^BSESN"  (SENSEX)
+        "SAP.DE"       → "^GDAXI"  (DAX)
+        "AZN.L"        → "^FTSE"   (FTSE 100)
+        "MSFT"         → "^GSPC"   (S&P 500)
+    """
+    t = ticker.upper().strip()
+
+    # Check suffix first (e.g., "TCS.NS" → "NS")
+    if "." in t:
+        suffix = t.rsplit(".", 1)[-1]
+        if suffix in _SUFFIX_TO_BENCHMARK:
+            return _SUFFIX_TO_BENCHMARK[suffix]
+
+    # Check bare ticker overrides
+    if t in _BARE_TICKER_BENCHMARK:
+        return _BARE_TICKER_BENCHMARK[t]
+
+    # Default: S&P 500
+    return "^GSPC"

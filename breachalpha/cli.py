@@ -12,7 +12,7 @@ import pandas as pd
 
 from . import __version__
 from .breach_loader import load_breaches, get_breach_summary
-from .ticker_resolver import resolve_all, load_overrides
+from .ticker_resolver import resolve_all, load_overrides, detect_benchmark
 from .stock_loader import fetch_stock_data, fetch_market_data
 from .feature_engine import BreachEvent, compute_features, classify_severity
 from .model import train_model, save_model, load_model, predict_severity, prepare_training_data
@@ -51,9 +51,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
         },
     ]
 
-    print(f"\nFetching market data (S&P 500)...")
-    market_data = fetch_market_data(start="2015-01-01")
-
+    print(f"\nFetching market data...")
     model = load_model()
     if model is None:
         print("No trained model found. Training on synthetic data...")
@@ -78,6 +76,8 @@ def cmd_demo(args: argparse.Namespace) -> int:
             print(f"  ⚠ No stock data available for {case['ticker']}")
             continue
 
+        bm = detect_benchmark(case["ticker"])
+        market_data = fetch_market_data(start="2015-01-01", benchmark=bm)
         event = BreachEvent(
             company_name=case["company"],
             ticker=case["ticker"],
@@ -86,6 +86,7 @@ def cmd_demo(args: argparse.Namespace) -> int:
             breach_type=case["breach_type"],
             stock_data=stock_data,
             market_data=market_data,
+            benchmark=bm,
         )
 
         features = compute_features(event)
@@ -146,7 +147,6 @@ def cmd_train(args: argparse.Namespace) -> int:
         return 1
 
     print(f"Fetching stock data...")
-    market_data = fetch_market_data(start="2010-01-01")
 
     features_list = []
     for _, row in resolved.iterrows():
@@ -157,6 +157,8 @@ def cmd_train(args: argparse.Namespace) -> int:
             print("no data, skipping")
             continue
 
+        bm = detect_benchmark(ticker)
+        market_data = fetch_market_data(start="2010-01-01", benchmark=bm)
         event = BreachEvent(
             company_name=row["Name"],
             ticker=ticker,
@@ -165,6 +167,7 @@ def cmd_train(args: argparse.Namespace) -> int:
             breach_type="data_leak",  # Default; HIBP doesn't classify type
             stock_data=stock_data,
             market_data=market_data,
+            benchmark=bm,
         )
         features = compute_features(event)
         if features is not None:
@@ -237,7 +240,8 @@ def cmd_score(args: argparse.Namespace) -> int:
         print(f"Error: No stock data for {ticker}")
         return 1
 
-    market_data = fetch_market_data(start="2015-01-01")
+    bm = detect_benchmark(ticker)
+    market_data = fetch_market_data(start="2015-01-01", benchmark=bm)
 
     event = BreachEvent(
         company_name=company,
@@ -247,6 +251,7 @@ def cmd_score(args: argparse.Namespace) -> int:
         breach_type=breach_type,
         stock_data=stock_data,
         market_data=market_data,
+        benchmark=bm,
     )
 
     features = compute_features(event)
