@@ -24,13 +24,27 @@
   - `/api/data-sources/*` — data source config, test, status
   - `/api/cache` — stock cache info, clear
   - `/api/config/presets` — analysis configuration presets
+  - `/api/score/auto` — auto-search breach data and score company
+  - `/api/explain/auto` — auto-search breach data and explain score
 - **frontend features**:
   - Settings tab with analysis presets and data source configuration
   - LLM analysis panel in upload results
   - Breach search with auto-fill date/type/records
   - Ticker search with debounce and live price display
+  - Sortable batch results table with aria-sort
+  - Chart error states and tooltips
+  - Reduced motion support (prefers-reduced-motion)
+  - Scale press feedback on buttons and cards
 
 ### Fixed
+- **preprocessor**: Ticker validation in CSV uploads
+  - `resolve_tickers` now validates ticker column values via `is_likely_ticker()`
+  - Falls back to company name resolution for fake tickers (e.g., "XXXXX", "N/A")
+- **data_sources**: YFinanceSource.fetch_batch chart result iteration
+  - Removed non-existent `_write_cache` call
+  - Added `chart.get("result")` guard for NoneType iteration
+- **server**: upload/analyze endpoint returns results for valid companies
+  - Added company-name fallback when stock data fetch returns empty
 - **feature_engine**: Cross-exchange timestamp normalization
   - Stock and market indices normalized to date-only before intersection
   - Fixes "Insufficient data around breach date" for Indian stocks (TATAPOWER.NS)

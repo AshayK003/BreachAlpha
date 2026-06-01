@@ -215,7 +215,7 @@ class YFinanceSource(DataSource):
                 chart = data.get("chart", {})
 
                 # Handle single vs multi-ticker response
-                if "result" in chart:
+                if chart.get("result"):
                     for result in chart["result"]:
                         symbol = result.get("meta", {}).get("symbol", "")
                         timestamps = result.get("timestamp")
@@ -236,7 +236,6 @@ class YFinanceSource(DataSource):
 
                         if len(df) > 0:
                             results[symbol] = df
-                            self._write_cache(symbol, "yfinance", df)
 
                 if results:
                     logger.info("Batch downloaded %d tickers", len(results))

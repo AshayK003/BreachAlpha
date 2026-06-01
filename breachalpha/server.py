@@ -79,6 +79,15 @@ class ScoreResponse(BaseModel):
     features: FeatureDetail
 
 
+class AutoScoreResponse(ScoreResponse):
+    breach_found: bool
+    breach_date_used: str
+    records_used: int
+    breach_type_used: str
+    breach_confidence: float
+    incident_count: int
+
+
 class DemoCase(BaseModel):
     company: str
     ticker: str
@@ -316,6 +325,99 @@ async def score_company(req: ScoreRequest):
     )
 
 
+@app.post("/api/score/auto", response_model=AutoScoreResponse)
+async def score_auto(req: ScoreRequest):
+    """Search for real breach data and score using the most significant incident."""
+    import re
+    from .breach_search import search_breach_incidents
+
+    ticker = resolve_ticker(req.company)
+    if ticker is None:
+        raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+
+    # Resolve company name from ticker for better search
+    company_name = req.company
+    try:
+        from .ticker_resolver import KNOWN_TICKERS
+        rev = {v.upper(): k for k, v in KNOWN_TICKERS.items() if v}
+        bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", ticker.upper())
+        if ticker.upper() in rev:
+            company_name = rev[ticker.upper()].title()
+        elif bare in rev:
+            company_name = rev[bare].title()
+    except Exception:
+        pass
+
+    # Search for breach incidents
+    incidents = search_breach_incidents(company_name, limit=5)
+    breach_found = len(incidents) > 0
+
+    if breach_found:
+        top = max(incidents, key=lambda x: (x.records_affected, x.confidence))
+        breach_date = top.date if top.date else req.breach_date
+        records = top.records_affected if top.records_affected > 0 else req.records_affected
+        breach_type = top.breach_type
+        breach_confidence = top.confidence
+    else:
+        breach_date = req.breach_date
+        records = req.records_affected
+        breach_type = req.breach_type
+        breach_confidence = 0.0
+
+    stock_data = fetch_stock_data(ticker, start="2015-01-01")
+    if stock_data.empty:
+        raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
+
+    market_data = fetch_market_data(start="2015-01-01")
+
+    event = BreachEvent(
+        company_name=company_name, ticker=ticker,
+        breach_date=pd.Timestamp(breach_date),
+        pwn_count=records, breach_type=breach_type,
+        stock_data=stock_data, market_data=market_data,
+    )
+
+    features = compute_features(event)
+    if features is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Insufficient data around breach date {breach_date} for {company_name}",
+        )
+
+    model = load_model()
+    if model is None:
+        model = _train_synthetic()["model"]
+
+    features_df = pd.DataFrame([features.to_dict()])
+    prediction = predict_severity(model, features_df)
+
+    return AutoScoreResponse(
+        company=req.company, ticker=ticker,
+        risk_score=prediction["risk_score"],
+        prediction=prediction["prediction"],
+        confidence=prediction["confidence"],
+        probabilities=prediction["probabilities"],
+        features=FeatureDetail(
+            abnormal_return_day0=features.abnormal_return_day0,
+            abnormal_return_day1=features.abnormal_return_day1,
+            abnormal_return_day5=features.abnormal_return_day5,
+            abnormal_return_day30=features.abnormal_return_day30,
+            car_minus1_plus1=features.car_minus1_plus1,
+            car_minus5_plus30=features.car_minus5_plus30,
+            volatility_spike=features.volatility_spike,
+            volume_change=features.volume_change,
+            time_to_recovery=features.time_to_recovery,
+            severity=classify_severity(features.car_minus5_plus30),
+        ),
+        breach_found=breach_found,
+        breach_date_used=breach_date,
+        records_used=records,
+        breach_type_used=breach_type,
+        breach_confidence=breach_confidence,
+        incident_count=len(incidents),
+    )
+
+
 @app.get("/api/demo", response_model=list[DemoCase])
 async def run_demo():
     """Run demo with three famous breaches."""
@@ -531,7 +633,6 @@ async def upload_and_analyze(file: UploadFile = File(...)):
 
     # Read file content
     content = await file.read()
-    print(f"[DEBUG] File size: {len(content)} bytes")
 
     # Save to temp file
     tmp_path = None
@@ -540,21 +641,16 @@ async def upload_and_analyze(file: UploadFile = File(...)):
             tmp.write(content)
             tmp_path = tmp.name
 
-        # Preprocess
         result = preprocess_dataset(tmp_path)
-        print(f"[DEBUG] Preprocess: success={result.success}, df_rows={len(result.df) if result.df is not None else 0}")
     finally:
         if tmp_path and os.path.exists(tmp_path):
             os.unlink(tmp_path)
 
     if not result.success or result.df is None:
-        print("[DEBUG] Preprocessing failed, returning empty")
         return BatchResponse(total=0, analyzed=0, failed=0, results=[])
 
     df = result.df
-    print(f"[DEBUG] Got {len(df)} rows, columns: {list(df.columns)}")
 
-    # Resolve tickers
     tickers_needed = []
     row_map = []
     for _, row in df.iterrows():
@@ -570,25 +666,27 @@ async def upload_and_analyze(file: UploadFile = File(...)):
             tickers_needed.append(str(ticker))
             row_map.append((company, str(ticker), breach_date, records, breach_type))
 
-    print(f"[DEBUG] Tickers: {tickers_needed}")
-
     if not tickers_needed:
-        print("[DEBUG] No tickers resolved")
         return BatchResponse(total=0, analyzed=0, failed=0, results=[])
 
-    # Fetch stock data
     stock_cache = fetch_stock_batch(list(set(tickers_needed)), start="2010-01-01")
-    print(f"[DEBUG] Stock cache: {len(stock_cache)} tickers")
 
     market_data = fetch_market_data(start="2010-01-01")
     model = load_model()
     if model is None:
         model = _train_synthetic()["model"]
 
-    # Build events
     events = []
     for company, ticker, breach_date, records, breach_type in row_map:
         stock_data = stock_cache.get(ticker, pd.DataFrame())
+        # Fallback: if ticker from CSV resolved to no stock data, try company name
+        if stock_data.empty:
+            alt_ticker = resolve_ticker(company)
+            if alt_ticker and alt_ticker != ticker:
+                alt_data = fetch_stock_data(alt_ticker, start="2010-01-01")
+                if not alt_data.empty:
+                    stock_data = alt_data
+                    stock_cache[alt_ticker] = alt_data
         if not stock_data.empty:
             events.append(BreachEvent(
                 company_name=company, ticker=ticker,
@@ -597,16 +695,11 @@ async def upload_and_analyze(file: UploadFile = File(...)):
                 stock_data=stock_data, market_data=market_data,
             ))
 
-    print(f"[DEBUG] Events built: {len(events)}")
-
     if not events:
         return BatchResponse(total=0, analyzed=0, failed=0, results=[])
 
-    # Compute features
     features_df = compute_features_batch(events)
-    print(f"[DEBUG] Features computed: {len(features_df)} rows")
 
-    # Predict
     results = []
     for _, feat_row in features_df.iterrows():
         fd = feat_row.to_dict()
@@ -632,7 +725,6 @@ async def upload_and_analyze(file: UploadFile = File(...)):
             ))
 
     analyzed = sum(1 for r in results if r.status == "ok")
-    print(f"[DEBUG] Done: analyzed={analyzed}, failed={len(results)-analyzed}")
 
     return BatchResponse(total=len(results), analyzed=analyzed, failed=len(results)-analyzed, results=results)
 
@@ -668,6 +760,80 @@ async def explain_score(req: ExplainRequest):
         raise HTTPException(
             status_code=422,
             detail=f"Insufficient data around breach date for {req.company}",
+        )
+
+    model = load_model()
+    if model is None:
+        model = _train_synthetic()["model"]
+
+    report = generate_explanation(event, features, model)
+
+    return ExplainResponse(
+        company=report.company,
+        ticker=report.ticker,
+        breach_date=report.breach_date,
+        steps=[CalculationStepModel(**s.__dict__) for s in report.steps],
+        final_score=report.final_score,
+        final_prediction=report.final_prediction,
+        confidence=report.confidence,
+        probabilities=report.probabilities,
+        feature_contributions=report.feature_contributions,
+        methodology=report.methodology,
+        limitations=report.limitations,
+    )
+
+
+@app.post("/api/explain/auto", response_model=ExplainResponse)
+async def explain_auto(req: ScoreRequest):
+    """Auto-search breach data for a company/ticker and explain the most significant incident."""
+    import re
+    from .breach_search import search_breach_incidents
+
+    ticker = resolve_ticker(req.company)
+    if ticker is None:
+        raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+
+    company_name = req.company
+    try:
+        from .ticker_resolver import KNOWN_TICKERS
+        rev = {v.upper(): k for k, v in KNOWN_TICKERS.items() if v}
+        bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", ticker.upper())
+        if ticker.upper() in rev:
+            company_name = rev[ticker.upper()].title()
+        elif bare in rev:
+            company_name = rev[bare].title()
+    except Exception:
+        pass
+
+    incidents = search_breach_incidents(company_name, limit=5)
+    if incidents:
+        top = max(incidents, key=lambda x: (x.records_affected, x.confidence))
+        breach_date = top.date if top.date else req.breach_date
+        records = top.records_affected if top.records_affected > 0 else req.records_affected
+        breach_type = top.breach_type
+    else:
+        breach_date = req.breach_date
+        records = req.records_affected
+        breach_type = req.breach_type
+
+    stock_data = fetch_stock_data(ticker, start="2015-01-01")
+    if stock_data.empty:
+        raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
+
+    market_data = fetch_market_data(start="2015-01-01")
+
+    event = BreachEvent(
+        company_name=company_name, ticker=ticker,
+        breach_date=pd.Timestamp(breach_date),
+        pwn_count=records, breach_type=breach_type,
+        stock_data=stock_data, market_data=market_data,
+    )
+
+    features = compute_features(event)
+    if features is None:
+        raise HTTPException(
+            status_code=422,
+            detail=f"Insufficient data around breach date {breach_date} for {company_name}",
         )
 
     model = load_model()

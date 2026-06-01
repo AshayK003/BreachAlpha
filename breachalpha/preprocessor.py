@@ -167,28 +167,35 @@ def validate_dataset(df: pd.DataFrame) -> dict:
 
 def resolve_tickers(df: pd.DataFrame, overrides: dict[str, str] = None, skip: bool = False) -> tuple[pd.DataFrame, float]:
     """Resolve tickers with user override support."""
+    from .ticker_resolver import is_likely_ticker
+
     if skip:
         return df, 0.0
 
-    if "ticker" in df.columns:
-        valid = df["ticker"].notna() & (df["ticker"] != "")
-        return df, valid.sum() / len(df) if len(df) > 0 else 0
+    tickers_out = []
+    has_ticker_col = "ticker" in df.columns
+    has_company_col = "company_name" in df.columns
 
-    if "company_name" not in df.columns:
-        return df, 0.0
+    for idx, row in df.iterrows():
+        ticker = row.get("ticker") if has_ticker_col else None
 
-    tickers = []
-    for name in df["company_name"]:
-        name_str = str(name)
-        # Check user overrides first
-        if overrides and name_str.lower() in {k.lower(): v for k, v in overrides.items()}:
-            ticker = next(v for k, v in overrides.items() if k.lower() == name_str.lower())
-        else:
-            ticker = resolve_ticker(name_str)
-        tickers.append(ticker)
+        # If ticker is missing, empty, or doesn't look like a valid ticker, resolve it
+        if ticker is None or (isinstance(ticker, str) and not ticker.strip()) or (isinstance(ticker, float) and pd.isna(ticker)):
+            ticker = None
+        elif isinstance(ticker, str) and not is_likely_ticker(ticker.strip()):
+            ticker = None
 
-    df["ticker"] = tickers
-    resolved = sum(1 for t in tickers if t is not None)
+        if ticker is None and has_company_col:
+            name_str = str(row.get("company_name", ""))
+            if overrides and name_str.lower() in {k.lower(): v for k, v in overrides.items()}:
+                ticker = next(v for k, v in overrides.items() if k.lower() == name_str.lower())
+            else:
+                ticker = resolve_ticker(name_str)
+
+        tickers_out.append(ticker if ticker else None)
+
+    df["ticker"] = tickers_out
+    resolved = sum(1 for t in tickers_out if t is not None)
     return df, resolved / len(df) if len(df) > 0 else 0
 
 

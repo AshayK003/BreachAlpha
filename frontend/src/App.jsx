@@ -17,29 +17,35 @@ const SEVERITY_COLORS = {
   low: '#10b981', medium: '#f59e0b', high: '#f97316', critical: '#ef4444',
 }
 const SEVERITY_BG = {
-  low: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
-  medium: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
-  high: 'bg-orange-500/20 text-orange-400 border border-orange-500/30',
-  critical: 'bg-red-500/20 text-red-400 border border-red-500/30',
+  low: 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/25',
+  medium: 'bg-amber-500/15 text-amber-400 border border-amber-500/25',
+  high: 'bg-orange-500/15 text-orange-400 border border-orange-500/25',
+  critical: 'bg-red-500/15 text-red-400 border border-red-500/25',
 }
 
-// ── Reusable Components ─────────────────────────────────────────────────
+function cn(...classes) {
+  return classes.filter(Boolean).join(' ')
+}
+
+function Skeleton({ className }) {
+  return <div className={cn('skeleton', className)} />
+}
 
 function RiskGauge({ score, prediction }) {
   const color = SEVERITY_COLORS[prediction] || '#64748b'
   const circumference = 2 * Math.PI * 70
   const offset = circumference - (score / 100) * circumference
   return (
-    <div className="relative w-48 h-48 mx-auto">
+    <div className="relative w-44 h-44 mx-auto fade-in" role="img" aria-label={`Risk score: ${score} out of 100, severity: ${prediction}`}>
       <svg className="w-full h-full" style={{ transform: 'rotate(-90deg)' }} viewBox="0 0 160 160">
-        <circle cx="80" cy="80" r="70" fill="none" stroke="#1e293b" strokeWidth="12" />
-        <circle cx="80" cy="80" r="70" fill="none" stroke={color} strokeWidth="12"
+        <circle cx="80" cy="80" r="70" fill="none" stroke="#1e293b" strokeWidth="10" />
+        <circle cx="80" cy="80" r="70" fill="none" stroke={color} strokeWidth="10"
           strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset}
           style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
         <span className="text-3xl font-bold" style={{ color }}>{score}</span>
-        <span className="text-xs text-slate-400 mt-1">/ 100</span>
+        <span className="text-xs text-slate-500 mt-0.5">/ 100</span>
       </div>
     </div>
   )
@@ -47,25 +53,25 @@ function RiskGauge({ score, prediction }) {
 
 function ProbabilityBar({ label, probability, color }) {
   return (
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-3" role="group" aria-label={`${label}: ${(probability * 100).toFixed(1)}%`}>
       <span className="w-20 text-xs text-slate-400 capitalize">{label}</span>
-      <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div className="flex-1 h-2.5 bg-slate-700/60 rounded-full overflow-hidden" role="meter" aria-valuenow={Math.round(probability * 100)} aria-valuemin={0} aria-valuemax={100}>
         <div className="h-full rounded-full transition-all duration-500"
           style={{ width: `${probability * 100}%`, backgroundColor: color }} />
       </div>
-      <span className="w-12 text-xs text-slate-300 text-right">{(probability * 100).toFixed(1)}%</span>
+      <span className="w-12 text-xs text-slate-300 text-right font-mono">{(probability * 100).toFixed(1)}%</span>
     </div>
   )
 }
 
 function FeatureCard({ label, value, unit, negative }) {
-  const color = negative ? 'text-red-400' : 'text-slate-400'
+  const color = negative ? 'text-red-400' : 'text-slate-300'
   return (
-    <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3">
-      <div className="text-xs text-slate-500 mb-1">{label}</div>
-      <div className={`text-lg font-semibold ${color}`}>
+    <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-3">
+      <div className="text-[0.6875rem] text-slate-500 mb-0.5">{label}</div>
+      <div className={cn('text-base font-semibold font-mono', color)}>
         {typeof value === 'number' ? value.toFixed(4) : value || 'N/A'}
-        {unit && <span className="text-xs text-slate-500 ml-1">{unit}</span>}
+        {unit && <span className="text-xs text-slate-500 ml-0.5 font-normal">{unit}</span>}
       </div>
     </div>
   )
@@ -73,14 +79,22 @@ function FeatureCard({ label, value, unit, negative }) {
 
 function TabBar({ tabs, active, onChange }) {
   return (
-    <div className="flex gap-1 bg-slate-800/60 p-1 rounded-xl mb-6">
+    <div className="flex gap-0.5 bg-slate-800/40 p-0.5 rounded-xl mb-6" role="tablist" aria-label="Analysis sections">
       {tabs.map(tab => (
-        <button key={tab.id} onClick={() => onChange(tab.id)}
-          className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-colors ${
+        <button key={tab.id} role="tab" id={`tab-${tab.id}`} aria-selected={active === tab.id}
+          aria-controls={`panel-${tab.id}`}
+          onClick={() => onChange(tab.id)}
+          onKeyDown={e => {
+            const idx = tabs.findIndex(t => t.id === active)
+            if (e.key === 'ArrowRight') onChange(tabs[(idx + 1) % tabs.length].id)
+            if (e.key === 'ArrowLeft') onChange(tabs[(idx - 1 + tabs.length) % tabs.length].id)
+          }}
+          className={cn(
+            'flex-1 py-2 px-3 rounded-lg text-sm font-medium transition-all',
             active === tab.id
-              ? 'bg-blue-600 text-white'
-              : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
-          }`}>
+              ? 'bg-blue-600 text-white shadow-sm'
+              : 'text-slate-400 hover:text-white hover:bg-slate-700/30'
+          )}>
           {tab.label}
         </button>
       ))}
@@ -88,19 +102,15 @@ function TabBar({ tabs, active, onChange }) {
   )
 }
 
-// ── Settings Panel ───────────────────────────────────────────────────────
-
 function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [dataSourceConfig, setDataSourceConfig] = useState({
-    primary_source: 'yfinance',
-    alpha_vantage_key: '',
-    enable_fallback: true,
-    cache_ttl_hours: 24,
+    primary_source: 'yfinance', alpha_vantage_key: '', enable_fallback: true, cache_ttl_hours: 24,
   })
   const [sourceStatus, setSourceStatus] = useState(null)
   const [testResult, setTestResult] = useState(null)
   const [testTicker, setTestTicker] = useState('MSFT')
+  const [saveFeedback, setSaveFeedback] = useState('')
 
   useEffect(() => { onLoadPresets(); loadSourceStatus() }, [])
 
@@ -108,14 +118,11 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
     try {
       const res = await fetch(`${API}/data-sources`)
       if (!res.ok) return
-      const data = await res.json()
-      setSourceStatus(data)
+      setSourceStatus(await res.json())
     } catch {}
   }
 
-  const applyPreset = (preset) => {
-    setConfig(preset.config)
-  }
+  const applyPreset = (preset) => { setConfig(preset.config) }
 
   const testSource = async (sourceName) => {
     setTestResult(null)
@@ -128,9 +135,7 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
         return
       }
       setTestResult(await res.json())
-    } catch (e) {
-      setTestResult({ source: sourceName, success: false, error: e.message })
-    }
+    } catch (e) { setTestResult({ source: sourceName, success: false, error: e.message }) }
   }
 
   const saveSourceConfig = async () => {
@@ -140,35 +145,33 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
         body: JSON.stringify(dataSourceConfig),
       })
       setSourceStatus(await res.json())
+      setSaveFeedback('Saved!')
+      setTimeout(() => setSaveFeedback(''), 2500)
     } catch {}
   }
 
   return (
     <div className="space-y-6">
-      {/* Analysis Settings */}
-      <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
+      <div className="card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+            <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
             </svg>
             Analysis Settings
           </h3>
           <button onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-slate-400 hover:text-white">
+            className="text-xs text-slate-400 hover:text-white transition-colors">
             {showAdvanced ? 'Hide' : 'Advanced'}
           </button>
         </div>
 
-        {/* Presets */}
         <div className="mb-4">
-          <label className="block text-xs text-slate-400 mb-2">Quick Presets</label>
+          <label className="label">Quick Presets</label>
           <div className="grid grid-cols-2 gap-2">
             {presets.map(p => (
               <button key={p.name} onClick={() => applyPreset(p)}
-                className="bg-slate-800/60 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-left hover:border-blue-500/50 transition-colors">
+                className="bg-slate-800/50 border border-slate-700/40 rounded-lg px-3 py-2 text-xs text-left hover:border-blue-500/40 transition-colors">
                 <div className="text-white font-medium capitalize">{p.name}</div>
                 <div className="text-slate-500 mt-0.5">{p.description}</div>
               </button>
@@ -176,12 +179,11 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
           </div>
         </div>
 
-        {/* Quick Settings */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Market Benchmark</label>
+            <label className="label">Market Benchmark</label>
             <select value={config.benchmark} onChange={e => setConfig({...config, benchmark: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
+              className="input">
               <option value="^GSPC">S&P 500 (^GSPC)</option>
               <option value="^DJI">Dow Jones (^DJI)</option>
               <option value="^IXIC">NASDAQ (^IXIC)</option>
@@ -190,182 +192,157 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
               <option value="^NSEBANK">NIFTY Bank (^NSEBANK)</option>
             </select>
           </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Stock Data Start Date</label>
-            <input type="date" value={config.start_date} onChange={e => setConfig({...config, start_date: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-          </div>
-          <div>
-            <label className="block text-xs text-slate-400 mb-1">Min Records Affected</label>
-            <input type="number" value={config.min_records} onChange={e => setConfig({...config, min_records: parseInt(e.target.value)})}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="label">Stock Data Start</label>
+              <input type="date" value={config.start_date} onChange={e => setConfig({...config, start_date: e.target.value})} className="input" />
+            </div>
+            <div>
+              <label className="label">Min Records</label>
+              <input type="number" value={config.min_records} onChange={e => setConfig({...config, min_records: parseInt(e.target.value) || 0})} className="input" />
+            </div>
           </div>
         </div>
 
-        {/* Advanced Settings */}
         {showAdvanced && (
-          <div className="space-y-3 pt-4 border-t border-slate-700/50">
+          <div className="space-y-3 pt-4 mt-4 border-t border-slate-700/40">
             <h4 className="text-xs font-semibold text-slate-300">Event Windows</h4>
             <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Estimation Window (days)</label>
-                <input type="number" value={config.estimation_window}
-                  onChange={e => setConfig({...config, estimation_window: parseInt(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Pre-Event Window (days)</label>
-                <input type="number" value={config.pre_event_window}
-                  onChange={e => setConfig({...config, pre_event_window: parseInt(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Post-Event Window (days)</label>
-                <input type="number" value={config.post_event_window}
-                  onChange={e => setConfig({...config, post_event_window: parseInt(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Recovery Max (days)</label>
-                <input type="number" value={config.recovery_max_days}
-                  onChange={e => setConfig({...config, recovery_max_days: parseInt(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
-              </div>
-            </div>
-
-            <h4 className="text-xs font-semibold text-slate-300 pt-2">CAR Windows</h4>
-            <div className="grid grid-cols-4 gap-2">
               {[
-                { label: 'Short Start', key: 'car_short_start' },
-                { label: 'Short End', key: 'car_short_end' },
-                { label: 'Long Start', key: 'car_long_start' },
-                { label: 'Long End', key: 'car_long_end' },
-              ].map(({ label, key }) => (
+                { label: 'Estimation', key: 'estimation_window', suffix: 'days' },
+                { label: 'Pre-Event', key: 'pre_event_window', suffix: 'days' },
+                { label: 'Post-Event', key: 'post_event_window', suffix: 'days' },
+                { label: 'Recovery Max', key: 'recovery_max_days', suffix: 'days' },
+              ].map(({ label, key, suffix }) => (
                 <div key={key}>
-                  <label className="block text-xs text-slate-500 mb-1">{label}</label>
-                  <input type="number" value={config[key]}
-                    onChange={e => setConfig({...config, [key]: parseInt(e.target.value)})}
-                    className="w-full bg-slate-800 border border-slate-600 rounded-lg px-2 py-2 text-xs text-white focus:outline-none focus:border-blue-500" />
+                  <label className="label">{label}</label>
+                  <div className="relative">
+                    <input type="number" value={config[key]}
+                      onChange={e => setConfig({...config, [key]: parseInt(e.target.value) || 0})}
+                      className="input pr-10" />
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-slate-500">{suffix}</span>
+                  </div>
                 </div>
               ))}
             </div>
 
-            <h4 className="text-xs font-semibold text-slate-300 pt-2">Severity Thresholds (CAR)</h4>
+            <h4 className="text-xs font-semibold text-slate-300 pt-1">CAR Windows</h4>
+            <div className="grid grid-cols-4 gap-2">
+              {[
+                { label: 'Short Start', key: 'car_short_start' }, { label: 'Short End', key: 'car_short_end' },
+                { label: 'Long Start', key: 'car_long_start' }, { label: 'Long End', key: 'car_long_end' },
+              ].map(({ label, key }) => (
+                <div key={key}>
+                  <label className="label">{label}</label>
+                  <input type="number" value={config[key]}
+                    onChange={e => setConfig({...config, [key]: parseInt(e.target.value) || 0})}
+                    className="input" />
+                </div>
+              ))}
+            </div>
+
+            <h4 className="text-xs font-semibold text-slate-300 pt-1">Severity Thresholds</h4>
             <div className="grid grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Critical (&lt;)</label>
-                <input type="number" step="0.01" value={config.threshold_critical}
-                  onChange={e => setConfig({...config, threshold_critical: parseFloat(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-red-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">High (&lt;)</label>
-                <input type="number" step="0.01" value={config.threshold_high}
-                  onChange={e => setConfig({...config, threshold_high: parseFloat(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-orange-500" />
-              </div>
-              <div>
-                <label className="block text-xs text-slate-500 mb-1">Medium (&lt;)</label>
-                <input type="number" step="0.01" value={config.threshold_medium}
-                  onChange={e => setConfig({...config, threshold_medium: parseFloat(e.target.value)})}
-                  className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-amber-500" />
-              </div>
+              {[
+                { label: 'Critical (<)', key: 'threshold_critical', color: 'red' },
+                { label: 'High (<)', key: 'threshold_high', color: 'orange' },
+                { label: 'Medium (<)', key: 'threshold_medium', color: 'amber' },
+              ].map(({ label, key, color }) => (
+                <div key={key}>
+                  <label className="label">{label}</label>
+                  <input type="number" step="0.01" value={config[key]}
+                    onChange={e => setConfig({...config, [key]: parseFloat(e.target.value) || 0})}
+                    className="input" />
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
 
-      {/* Data Sources Panel */}
-      <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
+      <div className="card p-6">
         <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
           <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" />
           </svg>
           Data Sources
         </h3>
 
-        <p className="text-xs text-slate-400 mb-4">
-          Configure where stock data is fetched from. Multiple sources provide automatic fallback.
-        </p>
-
-        {/* Source Status */}
         {sourceStatus && (
-          <div className="mb-4 space-y-2">
+          <div className="mb-4 space-y-1.5" role="list">
             {Object.entries(sourceStatus.sources || {}).map(([name, info]) => (
-              <div key={name} className="flex items-center justify-between bg-slate-800/60 rounded-lg px-3 py-2">
-                <div className="flex items-center gap-2">
-                  <div className={`w-2 h-2 rounded-full ${info.available ? 'bg-emerald-400' : 'bg-slate-500'}`} />
-                  <span className="text-xs text-white font-medium capitalize">{name.replace('_', ' ')}</span>
-                  <span className="text-xs text-slate-500">Priority: {info.priority + 1}</span>
+              <div key={name} role="listitem" className="flex items-center justify-between bg-slate-800/40 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2.5">
+                  <div className={cn('status-dot', info.available ? 'bg-emerald-400' : 'bg-slate-500')} />
+                  <span className="text-xs text-white font-medium capitalize">{name.replace(/_/g, ' ')}</span>
+                  <span className="text-[0.65rem] text-slate-500">priority {info.priority + 1}</span>
                 </div>
-                {info.reason && <span className="text-xs text-amber-400">{info.reason}</span>}
+                {info.reason && <span className="text-[0.65rem] text-amber-400">{info.reason}</span>}
               </div>
             ))}
           </div>
         )}
 
-        {/* Configure */}
-        <div className="space-y-3 mb-4">
+        <div className="space-y-3">
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Primary Source</label>
+            <label className="label">Primary Source</label>
             <select value={dataSourceConfig.primary_source}
               onChange={e => setDataSourceConfig({...dataSourceConfig, primary_source: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500">
-              <option value="yfinance">yfinance (free, no key needed)</option>
-              <option value="alphavantage">Alpha Vantage (free API key)</option>
-              <option value="nse_india">NSE India (Indian stocks)</option>
+              className="input">
+              <option value="yfinance">yfinance (free, no key)</option>
+              <option value="alphavantage">Alpha Vantage (free key)</option>
+              <option value="nse_india">NSE India</option>
               <option value="yahoo_scrape">Yahoo Finance Scraping</option>
             </select>
           </div>
           <div>
-            <label className="block text-xs text-slate-400 mb-1">Alpha Vantage API Key (optional)</label>
-            <input type="password" placeholder="Enter API key for Alpha Vantage"
+            <label className="label">Alpha Vantage API Key</label>
+            <input type="password" placeholder="Optional API key"
               value={dataSourceConfig.alpha_vantage_key}
               onChange={e => setDataSourceConfig({...dataSourceConfig, alpha_vantage_key: e.target.value})}
-              className="w-full bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-            <p className="text-xs text-slate-500 mt-1">Free at <span className="text-blue-400">alphavantage.co</span> (25 calls/day)</p>
+              className="input" />
+            <p className="text-[0.65rem] text-slate-500 mt-1">Free at <span className="text-blue-400">alphavantage.co</span> (25 calls/day)</p>
           </div>
-          <div className="flex items-center gap-2">
-            <input type="checkbox" id="fallback" checked={dataSourceConfig.enable_fallback}
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={dataSourceConfig.enable_fallback}
               onChange={e => setDataSourceConfig({...dataSourceConfig, enable_fallback: e.target.checked})}
               className="rounded border-slate-600 bg-slate-800 text-blue-500 focus:ring-blue-500" />
-            <label htmlFor="fallback" className="text-xs text-slate-400">Enable automatic fallback to other sources</label>
+            <span className="text-xs text-slate-400">Enable automatic fallback</span>
+          </label>
+          <div className="flex items-center gap-3">
+            <button onClick={saveSourceConfig} className="btn btn-primary flex-1">
+              Save Config
+            </button>
+            {saveFeedback && <span className="text-xs text-emerald-400 animate-pulse" role="status">{saveFeedback}</span>}
           </div>
-          <button onClick={saveSourceConfig}
-            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-medium py-2 rounded-lg transition-colors">
-            Save Data Source Config
-          </button>
         </div>
 
-        {/* Test Source */}
-        <div className="pt-4 border-t border-slate-700/50">
+        <div className="pt-4 mt-4 border-t border-slate-700/40">
           <h4 className="text-xs font-semibold text-slate-300 mb-3">Test a Source</h4>
-          <div className="flex gap-2 mb-3">
-            <input type="text" placeholder="Ticker (e.g., MSFT, TCS.NS)" value={testTicker}
-              onChange={e => setTestTicker(e.target.value)}
-              className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-blue-500" />
-          </div>
+          <input type="text" placeholder="Ticker (e.g., MSFT, TCS.NS)" value={testTicker}
+            onChange={e => setTestTicker(e.target.value)} className="input mb-3" />
           <div className="grid grid-cols-2 gap-2">
             {['auto', 'yfinance', 'alphavantage', 'nse_india', 'yahoo_scrape'].map(src => (
               <button key={src} onClick={() => testSource(src)}
-                className="bg-slate-800/60 border border-slate-700/50 rounded-lg px-3 py-2 text-xs text-white hover:border-blue-500/50 transition-colors capitalize">
-                {src === 'auto' ? 'Test Auto (Fallback Chain)' : `Test ${src.replace('_', ' ')}`}
+                className={cn(
+                  'bg-slate-800/40 border border-slate-700/40 rounded-lg px-3 py-2 text-xs text-white hover:border-blue-500/40 transition-colors capitalize',
+                  testResult?.source === src && (testResult.success ? 'border-emerald-500/40' : 'border-red-500/40')
+                )}>
+                {src === 'auto' ? 'Auto (Fallback Chain)' : src.replace('_', ' ')}
               </button>
             ))}
           </div>
           {testResult && (
-            <div className={`mt-3 p-3 rounded-lg text-xs ${testResult.success ? 'bg-emerald-500/10 border border-emerald-500/30 text-emerald-400' : 'bg-red-500/10 border border-red-500/30 text-red-400'}`}>
+            <div role="alert" className={cn('mt-3 p-3 rounded-lg text-xs', testResult.success ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' : 'bg-red-500/10 border border-red-500/20 text-red-400')}>
               {testResult.success ? (
                 <div>
-                  <div className="font-semibold">{testResult.source} — Success</div>
-                  <div>{testResult.rows} rows, {testResult.elapsed_seconds}s</div>
-                  <div>Latest: ${testResult.latest_close?.toFixed(2)} ({testResult.date_range?.[0]} to {testResult.date_range?.[1]})</div>
+                  <div className="font-semibold mb-0.5">{testResult.source} — {testResult.rows} rows</div>
+                  <div>{testResult.elapsed_seconds}s elapsed</div>
                 </div>
               ) : (
                 <div>
-                  <div className="font-semibold">{testResult.source} — Failed</div>
-                  <div>{testResult.error}</div>
+                  <div className="font-semibold mb-0.5">{testResult.source} — Failed</div>
+                  <div className="opacity-80">{testResult.error}</div>
                 </div>
               )}
             </div>
@@ -375,8 +352,6 @@ function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
     </div>
   )
 }
-
-// ── Score Form ──────────────────────────────────────────────────────────
 
 function ScoreForm({ onScore, loading }) {
   const [company, setCompany] = useState('')
@@ -389,19 +364,21 @@ function ScoreForm({ onScore, loading }) {
   const [breachResults, setBreachResults] = useState([])
   const [breachSearching, setBreachSearching] = useState(false)
   const [showBreaches, setShowBreaches] = useState(false)
+  const [validationError, setValidationError] = useState('')
+  const [breachError, setBreachError] = useState('')
   const searchCache = useRef({})
   const debounceRef = useRef(null)
+  const searchRef = useRef(null)
+  const [activeIdx, setActiveIdx] = useState(-1)
 
   const searchTicker = useCallback(async (query) => {
     if (query.length < 2) { setSearchResults([]); return }
-
     const cacheKey = query.toLowerCase()
     if (searchCache.current[cacheKey]) {
       setSearchResults(searchCache.current[cacheKey])
       setShowSearch(true)
       return
     }
-
     setSearching(true)
     try {
       const res = await fetch(`${API}/search?q=${encodeURIComponent(query)}&limit=5`)
@@ -418,11 +395,13 @@ function ScoreForm({ onScore, loading }) {
     if (!companyName || companyName.length < 2) return
     setBreachSearching(true)
     setShowBreaches(true)
+    setBreachError('')
     try {
       const res = await fetch(`${API}/breach-search?q=${encodeURIComponent(companyName)}&limit=5`)
       const data = await res.json()
       setBreachResults(data.incidents || [])
-    } catch { setBreachResults([]) }
+      if (!data.incidents?.length) setBreachError('No breaches found for this company online')
+    } catch { setBreachResults([]); setBreachError('Search failed — backend may be offline') }
     setBreachSearching(false)
   }
 
@@ -436,6 +415,7 @@ function ScoreForm({ onScore, loading }) {
   const handleCompanyChange = (e) => {
     const val = e.target.value
     setCompany(val)
+    setValidationError('')
     clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => searchTicker(val), 250)
   }
@@ -444,35 +424,59 @@ function ScoreForm({ onScore, loading }) {
     setCompany(result.ticker_full || result.symbol)
     setShowSearch(false)
     setSearchResults([])
+    setActiveIdx(-1)
   }
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    onScore({ company, breach_type: breachType, records_affected: parseInt(records), breach_date: date })
+    if (!company.trim()) {
+      setValidationError('Enter a company name or ticker')
+      return
+    }
+    setValidationError('')
+    onScore({ company, breach_type: breachType, records_affected: parseInt(records) || 0, breach_date: date })
+  }
+
+  const handleSearchKeyDown = (e) => {
+    if (!searchResults.length) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault(); setActiveIdx(i => Math.min(i + 1, searchResults.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault(); setActiveIdx(i => Math.max(i - 1, -1))
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault(); selectResult(searchResults[activeIdx])
+    } else if (e.key === 'Escape') {
+      setShowSearch(false); setActiveIdx(-1)
+    }
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form onSubmit={handleSubmit} noValidate className="space-y-4">
       <div className="relative">
-        <label className="block text-xs text-slate-400 mb-1">Company / Ticker</label>
+        <label className="label" htmlFor="company-input">Company / Ticker</label>
         <div className="relative">
-          <input type="text" value={company} onChange={handleCompanyChange}
+          <input id="company-input" type="text" value={company} onChange={handleCompanyChange}
             onFocus={() => searchResults.length > 0 && setShowSearch(true)}
-            onBlur={() => setTimeout(() => setShowSearch(false), 200)}
+            onBlur={() => setTimeout(() => { setShowSearch(false); setActiveIdx(-1) }, 200)}
+            onKeyDown={handleSearchKeyDown}
             placeholder="Search any stock: VEDL, Reliance, MSFT..."
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            required />
+            className={cn('input', validationError && 'input-error')}
+            aria-invalid={!!validationError}
+            aria-describedby={validationError ? 'company-error' : undefined}
+            aria-autocomplete="list" autoComplete="off" required />
           {searching && (
-            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-              <div className="animate-spin w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <div className="absolute right-3 top-1/2 -translate-y-1/2" aria-hidden="true">
+              <div className="animate-spin w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full" />
             </div>
           )}
         </div>
+        {validationError && <p id="company-error" className="text-xs text-red-400 mt-1" role="alert">{validationError}</p>}
         {showSearch && searchResults.length > 0 && (
-          <div className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-600 rounded-lg shadow-xl max-h-60 overflow-y-auto">
+          <div ref={searchRef} className="absolute z-50 w-full mt-1 bg-slate-800 border border-slate-600/60 rounded-lg shadow-xl max-h-60 overflow-y-auto" role="listbox" aria-label="Search results">
             {searchResults.map((r, i) => (
-              <button key={i} type="button" onClick={() => selectResult(r)}
-                className="w-full px-3 py-2 text-left hover:bg-slate-700 transition-colors border-b border-slate-700/50 last:border-0">
+              <button key={i} type="button" role="option" aria-selected={i === activeIdx} onClick={() => selectResult(r)}
+                className={cn('w-full px-3 py-2 text-left transition-colors border-b border-slate-700/30 last:border-0',
+                  i === activeIdx ? 'bg-blue-600/20' : 'hover:bg-slate-700/40')}>
                 <div className="flex items-center justify-between">
                   <div>
                     <span className="text-sm text-white font-medium">{r.ticker_full || r.symbol}</span>
@@ -491,49 +495,46 @@ function ScoreForm({ onScore, loading }) {
         )}
       </div>
 
-      {/* Breach Search Button */}
       <button type="button" onClick={() => searchBreaches(company)}
         disabled={!company || breachSearching}
-        className="w-full bg-amber-600/20 border border-amber-500/30 hover:bg-amber-600/30 disabled:bg-slate-800 disabled:border-slate-700 text-amber-400 disabled:text-slate-500 text-xs font-medium py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+        className="btn btn-secondary w-full justify-center">
         {breachSearching ? (
-          <><div className="animate-spin w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full" /> Searching breaches...</>
+          <><div className="animate-spin w-3 h-3 border-2 border-amber-400 border-t-transparent rounded-full" /> Searching...</>
         ) : (
-          <><svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> Find Breach Data from Internet</>
+          <><svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg> Find Breach Data from Internet</>
         )}
       </button>
 
-      {/* Breach Search Results */}
       {showBreaches && breachResults.length > 0 && (
-        <div className="bg-slate-800/60 border border-slate-700/50 rounded-lg p-3 space-y-2">
+        <div className="card p-3 space-y-2 fade-in" role="listbox" aria-label="Breach incidents">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-slate-400 font-medium">Found Breach Incidents</span>
-            <button type="button" onClick={() => setShowBreaches(false)} className="text-xs text-slate-500 hover:text-white">✕</button>
+            <span className="text-xs text-slate-400 font-medium">Breach Incidents Found</span>
+            <button type="button" onClick={() => setShowBreaches(false)} className="text-xs text-slate-500 hover:text-white" aria-label="Close breach results">✕</button>
           </div>
           {breachResults.map((inc, i) => (
-            <button key={i} type="button" onClick={() => selectBreach(inc)}
-              className="w-full text-left bg-slate-800/80 border border-slate-700/30 rounded-lg px-3 py-2 hover:border-amber-500/50 transition-colors">
-              <div className="flex items-center justify-between mb-1">
+            <button key={i} type="button" onClick={() => selectBreach(inc)} role="option"
+              className="w-full text-left bg-slate-800/50 border border-slate-700/30 rounded-lg px-3 py-2 hover:border-amber-500/40 transition-colors">
+              <div className="flex items-center justify-between mb-0.5">
                 <span className="text-xs text-white font-medium">{inc.date}</span>
-                <span className="text-xs text-amber-400 capitalize">{inc.breach_type?.replace('_', ' ')}</span>
+                <span className={cn('tag', inc.breach_type === 'ransomware' ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-amber-500/15 text-amber-400 border border-amber-500/20')}>{inc.breach_type?.replace(/_/g, ' ')}</span>
               </div>
               <p className="text-xs text-slate-400 line-clamp-1">{inc.description}</p>
               {inc.records_affected > 0 && (
-                <span className="text-xs text-slate-500">{(inc.records_affected / 1_000_000).toFixed(1)}M records</span>
+                <span className="text-[0.65rem] text-slate-500 mt-0.5 block">{(inc.records_affected / 1_000_000).toFixed(1)}M records</span>
               )}
             </button>
           ))}
-          <p className="text-xs text-slate-500 text-center">Click an incident to auto-fill date, type, and records</p>
+          <p className="text-[0.65rem] text-slate-500 text-center">Click an incident to auto-fill</p>
         </div>
       )}
-      {showBreaches && breachResults.length === 0 && !breachSearching && (
-        <div className="text-xs text-slate-500 text-center py-2">No breach incidents found</div>
+      {showBreaches && breachError && (
+        <p className="text-xs text-slate-500 text-center py-1" role="alert">{breachError}</p>
       )}
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Breach Type</label>
-          <select value={breachType} onChange={e => setBreachType(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500">
+          <label className="label">Breach Type</label>
+          <select value={breachType} onChange={e => setBreachType(e.target.value)} className="input">
             <option value="data_leak">Data Leak</option>
             <option value="ransomware">Ransomware</option>
             <option value="hack">External Hack</option>
@@ -542,91 +543,101 @@ function ScoreForm({ onScore, loading }) {
           </select>
         </div>
         <div>
-          <label className="block text-xs text-slate-400 mb-1">Records Affected</label>
-          <input type="number" value={records} onChange={e => setRecords(e.target.value)}
-            className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+          <label className="label">Records Affected</label>
+          <input type="number" value={records} onChange={e => setRecords(e.target.value)} className="input" min="0" />
         </div>
       </div>
       <div>
-        <label className="block text-xs text-slate-400 mb-1">Breach Date</label>
-        <input type="date" value={date} onChange={e => setDate(e.target.value)}
-          className="w-full bg-slate-800 border border-slate-600 rounded-lg px-4 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500" />
+        <label className="label">Breach Date</label>
+        <input type="date" value={date} onChange={e => setDate(e.target.value)} className="input" />
       </div>
-      <button type="submit" disabled={loading}
-        className="w-full bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 text-white font-medium py-2.5 rounded-lg transition-colors text-sm">
-        {loading ? 'Analyzing...' : 'Analyze Risk'}
+      <button type="submit" disabled={loading} className="btn btn-primary w-full py-2.5">
+        {loading ? (
+          <><div className="animate-spin w-3.5 h-3.5 border-2 border-white/60 border-t-transparent rounded-full" /> Analyzing...</>
+        ) : 'Analyze Risk'}
       </button>
     </form>
   )
 }
 
-// ── File Upload ─────────────────────────────────────────────────────────
-
 function FileUpload({ onUpload, onAnalyze, loading }) {
   const [dragActive, setDragActive] = useState(false)
   const [file, setFile] = useState(null)
+  const [fileError, setFileError] = useState('')
+
+  const MAX_SIZE = 50 * 1024 * 1024
 
   const handleDrag = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     if (e.type === 'dragenter' || e.type === 'dragover') setDragActive(true)
     else if (e.type === 'dragleave') setDragActive(false)
   }, [])
 
   const handleDrop = useCallback((e) => {
-    e.preventDefault()
-    e.stopPropagation()
+    e.preventDefault(); e.stopPropagation()
     setDragActive(false)
-    if (e.dataTransfer.files?.[0]) {
-      setFile(e.dataTransfer.files[0])
-    }
+    const f = e.dataTransfer.files?.[0]
+    if (f) validateAndSet(f)
   }, [])
 
   const handleChange = (e) => {
-    if (e.target.files?.[0]) setFile(e.target.files[0])
+    const f = e.target.files?.[0]
+    if (f) validateAndSet(f)
+  }
+
+  const validateAndSet = (f) => {
+    setFileError('')
+    const allowed = ['.csv', '.xlsx', '.xls', '.tsv']
+    const ext = '.' + f.name.split('.').pop().toLowerCase()
+    if (!allowed.includes(ext)) {
+      setFileError(`Unsupported format. Use: ${allowed.join(', ')}`)
+      return
+    }
+    if (f.size > MAX_SIZE) {
+      setFileError(`File too large (max 50 MB). Got ${(f.size / 1024 / 1024).toFixed(1)} MB`)
+      return
+    }
+    setFile(f)
   }
 
   return (
     <div className="space-y-3">
       <form onDragEnter={handleDrag} onDragLeave={handleDrag} onDragOver={handleDrag} onDrop={handleDrop}>
         <label className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-          dragActive ? 'border-blue-500 bg-blue-500/10' : 'border-slate-600 bg-slate-800/30 hover:border-slate-500'
-        }`}>
+          dragActive ? 'border-blue-500 bg-blue-500/10' : 'border-slate-600/50 bg-slate-800/20 hover:border-slate-500/50'
+        }`} role="button" aria-label="Upload a CSV, XLSX, or TSV file">
           <div className="flex flex-col items-center justify-center pt-2 pb-3">
-            <svg className="w-8 h-8 mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+            <svg className="w-7 h-7 mb-2 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
-            <p className="text-xs text-slate-400">
-              <span className="font-semibold text-blue-400">Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-slate-500 mt-1">CSV, XLSX, Excel, TSV</p>
+            <p className="text-xs text-slate-400"><span className="font-semibold text-blue-400">Click to upload</span> or drag and drop</p>
+            <p className="text-xs text-slate-500 mt-0.5">CSV, XLSX, Excel, TSV (max 50 MB)</p>
           </div>
           <input type="file" className="hidden" accept=".csv,.xlsx,.xls,.tsv" onChange={handleChange} />
         </label>
       </form>
 
+      {fileError && <p className="text-xs text-red-400" role="alert">{fileError}</p>}
+
       {file && (
-        <div className="bg-slate-800/50 border border-slate-700/50 rounded-lg p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
-            <span className="text-sm text-white">{file.name}</span>
-            <span className="text-xs text-slate-500">({(file.size / 1024).toFixed(1)} KB)</span>
+            <span className="text-sm text-white truncate">{file.name}</span>
+            <span className="text-xs text-slate-500 shrink-0">({(file.size / 1024).toFixed(1)} KB)</span>
           </div>
-          <button onClick={() => setFile(null)} className="text-xs text-slate-500 hover:text-red-400">Remove</button>
+          <button onClick={() => setFile(null)} className="text-xs text-slate-500 hover:text-red-400 shrink-0 ml-3">Remove</button>
         </div>
       )}
 
       {file && (
         <div className="flex gap-2">
-          <button onClick={() => onUpload(file)} disabled={loading}
-            className="flex-1 bg-slate-700 hover:bg-slate-600 disabled:bg-slate-800 text-white text-sm py-2 rounded-lg transition-colors">
+          <button onClick={() => onUpload(file)} disabled={loading} className="btn btn-secondary flex-1">
             {loading ? 'Previewing...' : 'Preview'}
           </button>
-          <button onClick={() => onAnalyze(file)} disabled={loading}
-            className="flex-1 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-600 text-white text-sm py-2 rounded-lg transition-colors">
+          <button onClick={() => onAnalyze(file)} disabled={loading} className="btn btn-primary flex-1">
             {loading ? 'Analyzing...' : 'Analyze All'}
           </button>
         </div>
@@ -635,56 +646,45 @@ function FileUpload({ onUpload, onAnalyze, loading }) {
   )
 }
 
-// ── Dataset Preview ─────────────────────────────────────────────────────
-
 function DatasetPreview({ data }) {
   if (!data) return null
   return (
-    <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-      <h4 className="text-sm font-semibold text-white mb-3">Dataset Preview</h4>
-
+    <div className="card p-6 fade-in">
+      <h4 className="text-sm font-semibold text-white mb-4">Dataset Preview</h4>
       <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-white">{data.original_rows}</div>
-          <div className="text-xs text-slate-500">Original Rows</div>
-        </div>
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-emerald-400">{data.cleaned_rows}</div>
-          <div className="text-xs text-slate-500">Cleaned Rows</div>
-        </div>
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-blue-400">{(data.ticker_resolution_rate * 100).toFixed(0)}%</div>
-          <div className="text-xs text-slate-500">Ticker Match</div>
-        </div>
+        {[
+          { label: 'Original Rows', value: data.original_rows, color: 'text-white' },
+          { label: 'Cleaned Rows', value: data.cleaned_rows, color: 'text-emerald-400' },
+          { label: 'Ticker Match', value: `${(data.ticker_resolution_rate * 100).toFixed(0)}%`, color: 'text-blue-400' },
+        ].map(s => (
+          <div key={s.label} className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-3 text-center">
+            <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
+            <div className="text-[0.6875rem] text-slate-500">{s.label}</div>
+          </div>
+        ))}
       </div>
-
       {data.warnings?.length > 0 && (
         <div className="mb-4 space-y-1">
           {data.warnings.slice(0, 5).map((w, i) => (
-            <div key={i} className="text-xs text-amber-400 bg-amber-500/10 px-3 py-1.5 rounded-lg">{w}</div>
+            <div key={i} className="text-xs text-amber-400 bg-amber-500/8 px-3 py-1.5 rounded-lg">{w}</div>
           ))}
         </div>
       )}
-
       {data.preview?.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto -mx-2">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-700">
+              <tr className="border-b border-slate-700/50">
                 {Object.keys(data.preview[0]).map(col => (
-                  <th key={col} className="text-left py-2 px-3 text-slate-400 font-medium capitalize">
-                    {col.replace(/_/g, ' ')}
-                  </th>
+                  <th key={col} className="text-left py-2 px-3 text-slate-400 font-medium capitalize whitespace-nowrap">{col.replace(/_/g, ' ')}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {data.preview.map((row, i) => (
-                <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30">
+                <tr key={i} className="border-b border-slate-800/30 hover:bg-slate-800/20">
                   {Object.values(row).map((val, j) => (
-                    <td key={j} className="py-2 px-3 text-slate-300">
-                      {typeof val === 'number' ? val.toLocaleString() : val}
-                    </td>
+                    <td key={j} className="py-2 px-3 text-slate-300 whitespace-nowrap">{typeof val === 'number' ? val.toLocaleString() : val}</td>
                   ))}
                 </tr>
               ))}
@@ -696,12 +696,42 @@ function DatasetPreview({ data }) {
   )
 }
 
-// ── Batch Results ───────────────────────────────────────────────────────
-
 function BatchResults({ data }) {
   const [expandedRow, setExpandedRow] = useState(null)
+  const [sortKey, setSortKey] = useState(null)
+  const [sortDir, setSortDir] = useState('asc')
 
   if (!data) return null
+
+  const toggleSort = (key) => {
+    setSortDir(d => (sortKey === key ? (d === 'asc' ? 'desc' : 'asc') : 'asc'))
+    setSortKey(key)
+  }
+
+  const sorted = [...(data.results || [])].sort((a, b) => {
+    if (!sortKey) return 0
+    let av = a[sortKey], bv = b[sortKey]
+    if (typeof av === 'string') av = av.toLowerCase()
+    if (typeof bv === 'string') bv = bv.toLowerCase()
+    if (av == null) return 1; if (bv == null) return -1
+    const cmp = av < bv ? -1 : av > bv ? 1 : 0
+    return sortDir === 'desc' ? -cmp : cmp
+  })
+
+  const SortIcon = ({ active }) => active
+    ? <svg className="w-3 h-3 inline ml-0.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={sortDir === 'asc' ? 'M5 15l7-7 7 7' : 'M19 9l-7 7-7-7'} /></svg>
+    : <svg className="w-3 h-3 inline ml-0.5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+
+  const Th = ({ sort, children, className }) => (
+    <th className={`text-left py-2 px-3 text-slate-400 font-medium select-none ${sort ? 'cursor-pointer hover:text-white transition-colors' : ''} ${className || ''}`}
+        onClick={sort ? () => toggleSort(sort) : undefined}
+        aria-sort={sortKey === sort ? (sortDir === 'asc' ? 'ascending' : 'descending') : undefined}
+        tabIndex={sort ? 0 : undefined}
+        onKeyDown={sort ? e => e.key === 'Enter' && toggleSort(sort) : undefined}>
+      {children}
+      {sort && <SortIcon active={sortKey === sort} />}
+    </th>
+  )
 
   const exportCSV = () => {
     const headers = ['Company', 'Ticker', 'Breach Date', 'Records', 'Risk Score', 'Prediction', 'Low%', 'Medium%', 'High%', 'Critical%', 'Confidence', 'Status']
@@ -722,202 +752,162 @@ function BatchResults({ data }) {
   }
 
   return (
-    <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
+    <div className="card p-6 fade-in">
       <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-semibold text-white">Batch Analysis Results</h4>
-        <button onClick={exportCSV}
-          className="text-xs text-blue-400 hover:text-blue-300 flex items-center gap-1">
-          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
+        <h4 className="text-sm font-semibold text-white">Batch Results</h4>
+        <button onClick={exportCSV} className="btn btn-secondary text-xs py-1.5 px-3">
+          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" /></svg>
           Export CSV
         </button>
       </div>
 
       <div className="grid grid-cols-3 gap-3 mb-4">
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-white">{data.total}</div>
-          <div className="text-xs text-slate-500">Total</div>
-        </div>
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-emerald-400">{data.analyzed}</div>
-          <div className="text-xs text-slate-500">Analyzed</div>
-        </div>
-        <div className="bg-slate-800/50 rounded-lg p-3 text-center">
-          <div className="text-lg font-bold text-red-400">{data.failed}</div>
-          <div className="text-xs text-slate-500">Failed</div>
-        </div>
+        {[
+          { label: 'Total', value: data.total, color: 'text-white', testId: 'batch-total' },
+          { label: 'Analyzed', value: data.analyzed, color: 'text-emerald-400', testId: 'batch-analyzed' },
+          { label: 'Failed', value: data.failed, color: 'text-red-400', testId: 'batch-failed' },
+        ].map(s => (
+          <div key={s.label} className="bg-slate-800/40 border border-slate-700/40 rounded-lg p-3 text-center">
+            <div className={`text-lg font-bold ${s.color}`}>{s.value}</div>
+            <div className="text-[0.6875rem] text-slate-500">{s.label}</div>
+          </div>
+        ))}
       </div>
 
-      <div className="overflow-x-auto max-h-[32rem] overflow-y-auto">
-        <table className="w-full text-xs">
-          <thead className="sticky top-0 bg-slate-800 z-10">
-            <tr className="border-b border-slate-700">
-              <th className="text-left py-2 px-3 text-slate-400">Company</th>
-              <th className="text-left py-2 px-3 text-slate-400">Ticker</th>
-              <th className="text-left py-2 px-3 text-slate-400">Date</th>
-              <th className="text-right py-2 px-3 text-slate-400">Score</th>
-              <th className="text-left py-2 px-3 text-slate-400">Severity</th>
-              <th className="text-left py-2 px-3 text-slate-400 min-w-[180px]">Probability Breakdown</th>
-              <th className="text-right py-2 px-3 text-slate-400">Conf</th>
-              <th className="text-left py-2 px-3 text-slate-400">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.results.map((r, i) => (
-              <>
-                <tr key={i} className="border-b border-slate-800/50 hover:bg-slate-800/30 cursor-pointer"
-                  onClick={() => setExpandedRow(expandedRow === i ? null : i)}>
+      {data.results.length === 0 ? (
+        <div className="empty-state">
+          <svg className="w-12 h-12 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          </svg>
+          <h3>No results</h3>
+          <p>The dataset didn't produce any analyzable results. Check the file format and try again.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto -mx-2 max-h-[32rem] overflow-y-auto">
+          <table className="w-full text-xs" role="table">
+            <thead className="sticky top-0 bg-slate-900 z-10">
+              <tr className="border-b border-slate-700/50">
+                <Th sort="company">Company</Th>
+                <Th sort="ticker">Ticker</Th>
+                <Th sort="breach_date">Date</Th>
+                <Th sort="risk_score" className="text-right">Score</Th>
+                <Th>Severity</Th>
+                <Th className="min-w-[160px]">Probabilities</Th>
+                <Th sort="confidence" className="text-right">Conf</Th>
+                <Th>Status</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((r, i) => (
+                <tr key={i} role="button" tabIndex={0} aria-expanded={expandedRow === i}
+                  onClick={() => setExpandedRow(expandedRow === i ? null : i)}
+                  onKeyDown={e => e.key === 'Enter' && setExpandedRow(expandedRow === i ? null : i)}
+                  className="border-b border-slate-800/30 hover:bg-slate-800/20 cursor-pointer transition-colors">
                   <td className="py-2 px-3 text-white font-medium">{r.company}</td>
                   <td className="py-2 px-3 text-slate-400">{r.ticker}</td>
-                  <td className="py-2 px-3 text-slate-400">{r.breach_date}</td>
-                  <td className="py-2 px-3 text-right font-mono font-bold"
-                    style={{ color: SEVERITY_COLORS[r.prediction] || '#64748b' }}>
+                  <td className="py-2 px-3 text-slate-400 whitespace-nowrap">{r.breach_date}</td>
+                  <td className="py-2 px-3 text-right font-mono font-bold" style={{ color: SEVERITY_COLORS[r.prediction] || '#64748b' }}>
                     {r.risk_score || '-'}
                   </td>
                   <td className="py-2 px-3">
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${SEVERITY_BG[r.prediction] || 'bg-slate-700 text-slate-400 border border-slate-700'}`}>
+                    <span className={cn('tag', SEVERITY_BG[r.prediction] || 'bg-slate-700 text-slate-400 border border-slate-700')}>
                       {r.prediction?.toUpperCase() || '-'}
                     </span>
                   </td>
-                  <td className="py-2 px-3">
+                  <td className="py-2 px-3 min-w-[130px]">
                     {r.probabilities && Object.keys(r.probabilities).length > 0 ? (
-                      <div className="flex gap-1 items-center">
+                      <div className="flex gap-0.5 items-center" aria-label={Object.entries(r.probabilities).map(([k, v]) => `${k}: ${(v * 100).toFixed(0)}%`).join(', ')}>
                         {['low', 'medium', 'high', 'critical'].map(sev => (
                           <div key={sev} className="flex-1" title={`${sev}: ${(r.probabilities[sev] * 100).toFixed(1)}%`}>
-                            <div className="h-1.5 bg-slate-700 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full" style={{
-                                width: `${(r.probabilities[sev] || 0) * 100}%`,
-                                backgroundColor: SEVERITY_COLORS[sev],
-                              }} />
+                            <div className="h-1.5 bg-slate-700/50 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full" style={{ width: `${(r.probabilities[sev] || 0) * 100}%`, backgroundColor: SEVERITY_COLORS[sev] }} />
                             </div>
                           </div>
                         ))}
                       </div>
                     ) : <span className="text-slate-600">-</span>}
                   </td>
-                  <td className="py-2 px-3 text-right text-slate-400">
-                    {r.confidence ? `${(r.confidence * 100).toFixed(0)}%` : '-'}
-                  </td>
+                  <td className="py-2 px-3 text-right text-slate-400">{r.confidence ? `${(r.confidence * 100).toFixed(0)}%` : '-'}</td>
                   <td className="py-2 px-3">
                     {r.status === 'ok' ? (
-                      <span className="text-emerald-400">OK</span>
+                      <span className="text-emerald-400 text-[0.65rem] font-medium">OK</span>
                     ) : (
-                      <span className="text-red-400" title={r.error}>{r.status}</span>
+                      <span className="text-red-400 text-[0.65rem]" title={r.error}>{r.status}</span>
                     )}
                   </td>
                 </tr>
-                {expandedRow === i && r.probabilities && (
-                  <tr key={`${i}-detail`} className="border-b border-slate-800/50 bg-slate-900/50">
-                    <td colSpan={8} className="px-4 py-3">
-                      <div className="grid grid-cols-4 gap-4">
-                        {['low', 'medium', 'high', 'critical'].map(sev => (
-                          <div key={sev} className="flex items-center gap-2">
-                            <div className="w-2 h-2 rounded-full" style={{ backgroundColor: SEVERITY_COLORS[sev] }} />
-                            <span className="text-xs text-slate-400 capitalize w-16">{sev}</span>
-                            <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                              <div className="h-full rounded-full transition-all" style={{
-                                width: `${(r.probabilities[sev] || 0) * 100}%`,
-                                backgroundColor: SEVERITY_COLORS[sev],
-                              }} />
-                            </div>
-                            <span className="text-xs text-white font-mono w-12 text-right">
-                              {((r.probabilities[sev] || 0) * 100).toFixed(1)}%
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <p className="text-xs text-slate-500 mt-3">Click a row to expand probability breakdown</p>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {data.results.length > 0 && (
+        <p className="text-[0.65rem] text-slate-500 mt-3">Click column headers to sort. Click a row to expand.</p>
+      )}
     </div>
   )
 }
 
-// ── Explainability Panel ────────────────────────────────────────────────
-
 function ExplainabilityPanel({ data }) {
   if (!data) return null
-
   return (
-    <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-      <div className="flex items-center gap-2 mb-4">
+    <div className="card p-6 fade-in">
+      <div className="flex items-center gap-2 mb-5">
         <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
         </svg>
         <h3 className="text-lg font-bold text-white">How the Risk Score is Calculated</h3>
       </div>
 
-      <div className="bg-blue-500/10 border border-blue-500/30 rounded-xl p-4 mb-6">
+      <div className="bg-blue-500/8 border border-blue-500/20 rounded-xl p-4 mb-6">
         <h4 className="text-sm font-semibold text-blue-400 mb-2">Methodology</h4>
         <p className="text-xs text-slate-300 leading-relaxed">{data.methodology}</p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {data.steps.map((step, i) => (
-          <div key={i} className="bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
+          <div key={i} className="bg-slate-800/30 border border-slate-700/40 rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <div className="w-7 h-7 rounded-full bg-blue-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 mt-0.5">
+              <div className="w-7 h-7 rounded-full bg-blue-600/15 border border-blue-500/25 flex items-center justify-center shrink-0 mt-0.5">
                 <span className="text-xs font-bold text-blue-400">{step.step_number}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <h5 className="text-sm font-semibold text-white mb-1">{step.name}</h5>
                 <p className="text-xs text-slate-400 mb-2">{step.description}</p>
-
-                <div className="bg-slate-900/50 rounded-lg p-3 mb-2 font-mono text-xs text-slate-300">
-                  {step.formula}
-                </div>
-
+                <div className="bg-slate-900/50 rounded-lg p-3 mb-2 font-mono text-xs text-slate-300 overflow-x-auto">{step.formula}</div>
                 <div className="grid grid-cols-2 gap-2 mb-2">
                   {Object.entries(step.inputs).map(([key, val]) => (
                     <div key={key} className="text-xs">
                       <span className="text-slate-500">{key}: </span>
-                      <span className="text-slate-300">
-                        {typeof val === 'object' ? JSON.stringify(val) : String(val)}
-                      </span>
+                      <span className="text-slate-300">{typeof val === 'object' ? JSON.stringify(val) : String(val)}</span>
                     </div>
                   ))}
                 </div>
-
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-500">Output:</span>
-                  <span className="text-sm font-semibold text-white">
-                    {typeof step.output === 'number' ? step.output.toFixed(6) : String(step.output)}
-                  </span>
+                  <span className="text-sm font-semibold text-white font-mono">{typeof step.output === 'number' ? step.output.toFixed(6) : String(step.output)}</span>
                 </div>
-
-                <div className="mt-2 text-xs text-slate-400 bg-slate-800/50 rounded-lg p-2">
-                  {step.interpretation}
-                </div>
+                <div className="mt-2 text-xs text-slate-400 bg-slate-800/30 rounded-lg p-2">{step.interpretation}</div>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Feature Contributions */}
-      <div className="mt-6 bg-slate-800/60 border border-slate-700/50 rounded-xl p-4">
-        <h4 className="text-sm font-semibold text-white mb-3">Feature Contributions to Risk Score</h4>
+      <div className="mt-6 bg-slate-800/30 border border-slate-700/40 rounded-xl p-4">
+        <h4 className="text-sm font-semibold text-white mb-3">Feature Contributions</h4>
         <div className="space-y-2">
           {Object.entries(data.feature_contributions).sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).map(([feat, val]) => (
             <div key={feat} className="flex items-center gap-3">
-              <span className="w-40 text-xs text-slate-400 truncate">{feat.replace(/_/g, ' ')}</span>
-              <div className="flex-1 h-2 bg-slate-700 rounded-full overflow-hidden">
-                <div className="h-full rounded-full transition-all duration-500"
-                  style={{
-                    width: `${Math.min(Math.abs(val) * 500, 100)}%`,
-                    backgroundColor: val < 0 ? '#ef4444' : '#10b981',
-                    marginLeft: val < 0 ? 'auto' : '0',
-                  }} />
+              <span className="w-36 text-xs text-slate-400 truncate shrink-0">{feat.replace(/_/g, ' ')}</span>
+              <div className="flex-1 h-2 bg-slate-700/40 rounded-full overflow-hidden">
+                <div className="h-full rounded-full transition-all duration-500" style={{
+                  width: `${Math.min(Math.abs(val) * 500, 100)}%`,
+                  backgroundColor: val < 0 ? '#ef4444' : '#10b981',
+                  marginLeft: val < 0 ? 'auto' : '0',
+                }} />
               </div>
-              <span className={`w-16 text-xs text-right font-mono ${val < 0 ? 'text-red-400' : 'text-emerald-400'}`}>
+              <span className={cn('w-16 text-xs text-right font-mono shrink-0', val < 0 ? 'text-red-400' : 'text-emerald-400')}>
                 {val > 0 ? '+' : ''}{val.toFixed(4)}
               </span>
             </div>
@@ -925,13 +915,12 @@ function ExplainabilityPanel({ data }) {
         </div>
       </div>
 
-      {/* Limitations */}
-      <div className="mt-6 bg-amber-500/10 border border-amber-500/30 rounded-xl p-4">
-        <h4 className="text-sm font-semibold text-amber-400 mb-2">Limitations & Caveats</h4>
+      <div className="mt-6 bg-amber-500/8 border border-amber-500/20 rounded-xl p-4">
+        <h4 className="text-sm font-semibold text-amber-400 mb-2">Limitations</h4>
         <ul className="space-y-1">
           {data.limitations.map((lim, i) => (
             <li key={i} className="text-xs text-slate-400 flex items-start gap-2">
-              <span className="text-amber-400 mt-0.5">*</span>
+              <span className="text-amber-400 mt-0.5 shrink-0">*</span>
               {lim}
             </li>
           ))}
@@ -941,20 +930,18 @@ function ExplainabilityPanel({ data }) {
   )
 }
 
-// ── Demo Card ───────────────────────────────────────────────────────────
-
 function DemoCard({ demo, onClick, onExplain }) {
-  const severityClass = demo.prediction ? SEVERITY_BG[demo.prediction] : 'bg-slate-700/50 text-slate-400 border border-slate-700'
   return (
-    <button onClick={() => onClick(demo)}
-      className="card-hover bg-slate-800/60 border border-slate-700/50 rounded-xl p-5 text-left w-full">
-      <div className="flex items-start justify-between mb-3">
-        <div>
-          <h3 className="text-white font-semibold">{demo.company}</h3>
+    <button onClick={() => onClick(demo)} onMouseDown={e => e.currentTarget.style.transform = 'scale(0.98)'}
+      onMouseUp={e => e.currentTarget.style.transform = ''} onMouseLeave={e => e.currentTarget.style.transform = ''}
+      className="card-hover card p-4 text-left w-full" style={{ transition: 'transform 0.15s cubic-bezier(0.4, 0, 0.2, 1)' }}>
+      <div className="flex items-start justify-between mb-2.5">
+        <div className="min-w-0">
+          <h3 className="text-white font-semibold text-sm truncate">{demo.company}</h3>
           <span className="text-xs text-slate-500">{demo.ticker}</span>
         </div>
         {demo.risk_score && (
-          <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${severityClass}`}>
+          <span className={cn('tag shrink-0 ml-2', demo.prediction ? SEVERITY_BG[demo.prediction] : 'bg-slate-700/50 text-slate-400 border border-slate-700')}>
             {demo.prediction?.toUpperCase()}
           </span>
         )}
@@ -965,24 +952,18 @@ function DemoCard({ demo, onClick, onExplain }) {
         <span className="text-slate-400">{(demo.pwn_count / 1_000_000).toFixed(0)}M records</span>
       </div>
       {demo.risk_score && (
-        <div className="mt-3 pt-3 border-t border-slate-700/50 flex items-center justify-between">
+        <div className="mt-2.5 pt-2.5 border-t border-slate-700/40 flex items-center justify-between">
           <span className="text-xs text-slate-500">Risk Score</span>
-          <div className="flex items-center gap-2">
-            <span className="text-lg font-bold" style={{ color: SEVERITY_COLORS[demo.prediction] }}>
-              {demo.risk_score}
-            </span>
+          <div className="flex items-center gap-2.5">
+            <span className="text-lg font-bold" style={{ color: SEVERITY_COLORS[demo.prediction] }}>{demo.risk_score}</span>
             <button onClick={(e) => { e.stopPropagation(); onExplain(demo) }}
-              className="text-xs text-blue-400 hover:text-blue-300" title="Explain this score">
-              Explain
-            </button>
+              className="text-xs text-blue-400 hover:text-blue-300 transition-colors" title="Explain this score">Explain</button>
           </div>
         </div>
       )}
     </button>
   )
 }
-
-// ── Features Chart ──────────────────────────────────────────────────────
 
 function LLMAnalysisPanel({ batchData }) {
   const [llmStatus, setLlmStatus] = useState(null)
@@ -991,6 +972,7 @@ function LLMAnalysisPanel({ batchData }) {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [askLoading, setAskLoading] = useState(false)
+  const questionRef = useRef(null)
 
   useEffect(() => {
     fetch(`${API}/llm/status`).then(r => r.json()).then(setLlmStatus).catch(() => {})
@@ -1001,15 +983,12 @@ function LLMAnalysisPanel({ batchData }) {
     try {
       const summary = `Dataset: ${batchData.total} companies, ${batchData.analyzed} analyzed, ${batchData.failed} failed. ` +
         `Results: ${batchData.results.map(r => `${r.company}(${r.ticker}): score=${r.risk_score}, ${r.prediction}`).join('; ')}`
-
       const res = await fetch(`${API}/llm/analyze-dataset`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ dataset_summary: summary, analysis_results: JSON.stringify(batchData.results) }),
       })
       if (!res.ok) throw new Error((await res.json()).detail)
-      const data = await res.json()
-      setAnalysis(data.analysis)
+      setAnalysis((await res.json()).analysis)
     } catch (e) { setAnalysis('Error: ' + e.message) }
     setLoading(false)
   }
@@ -1018,34 +997,30 @@ function LLMAnalysisPanel({ batchData }) {
     if (!question.trim()) return
     setAskLoading(true)
     try {
-      const context = `Dataset has ${batchData.analyzed} analyzed companies. Top results: ${
-        batchData.results.filter(r => r.status === 'ok').slice(0, 5).map(
-          r => `${r.company}: risk=${r.risk_score}, severity=${r.prediction}`
-        ).join('; ')}`
+      const context = `Dataset has ${batchData.analyzed} analyzed companies. Top: ${
+        batchData.results.filter(r => r.status === 'ok').slice(0, 5).map(r => `${r.company}: risk=${r.risk_score}, severity=${r.prediction}`).join('; ')}`
       const res = await fetch(`${API}/llm/ask`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, context }),
       })
       if (!res.ok) throw new Error((await res.json()).detail)
-      const data = await res.json()
-      setAnswer(data.answer)
+      setAnswer((await res.json()).answer)
     } catch (e) { setAnswer('Error: ' + e.message) }
     setAskLoading(false)
   }
 
   if (!llmStatus?.available) {
     return (
-      <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6 mt-6">
+      <div className="card p-5 mt-6">
         <h3 className="text-sm font-semibold text-white mb-2 flex items-center gap-2">
           <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-              d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
           LLM Analysis
         </h3>
-        <p className="text-xs text-slate-400">
-          Connect LM Studio (Qwen 3.5 9B) at <code className="bg-slate-700 px-1 rounded">192.168.56.1:1234</code> for AI-powered insights.
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Connect <strong className="text-slate-300">LM Studio</strong> with Qwen 3.5 9B at{' '}
+          <code className="bg-slate-700/60 px-1.5 py-0.5 rounded text-blue-400">192.168.56.1:1234</code> for AI insights.
         </p>
         <p className="text-xs text-slate-500 mt-1">Start LM Studio and load a model to enable this feature.</p>
       </div>
@@ -1053,20 +1028,19 @@ function LLMAnalysisPanel({ batchData }) {
   }
 
   return (
-    <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6 mt-6">
+    <div className="card p-5 mt-6 fade-in">
       <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
         <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
         </svg>
         LLM Analysis
-        <span className="text-xs text-emerald-400 font-normal">({llmStatus.default_model || 'connected'})</span>
+        <span className="text-[0.65rem] text-emerald-400 font-normal">({llmStatus.default_model || 'connected'})</span>
       </h3>
 
-      {/* Generate Analysis */}
-      <button onClick={generateAnalysis} disabled={loading}
-        className="w-full bg-purple-600/20 border border-purple-500/30 hover:bg-purple-600/30 disabled:bg-slate-800 text-purple-400 text-xs font-medium py-2 rounded-lg transition-colors mb-4">
-        {loading ? 'Analyzing with LLM...' : 'Generate AI Risk Analysis'}
+      <button onClick={generateAnalysis} disabled={loading} className="btn btn-secondary w-full justify-center mb-4">
+        {loading ? (
+          <><div className="animate-spin w-3 h-3 border-2 border-purple-400 border-t-transparent rounded-full" /> Analyzing...</>
+        ) : 'Generate AI Risk Analysis'}
       </button>
 
       {analysis && (
@@ -1076,16 +1050,14 @@ function LLMAnalysisPanel({ batchData }) {
         </div>
       )}
 
-      {/* Ask Question */}
-      <div className="border-t border-slate-700/50 pt-4">
+      <div className="border-t border-slate-700/40 pt-4">
         <h4 className="text-xs font-semibold text-slate-300 mb-2">Ask about this data</h4>
         <div className="flex gap-2">
-          <input type="text" value={question} onChange={e => setQuestion(e.target.value)}
-            placeholder="e.g., Which breach type causes the most financial damage?"
-            className="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500"
+          <input ref={questionRef} type="text" value={question} onChange={e => setQuestion(e.target.value)}
+            placeholder="e.g., Which breach type causes the most damage?"
+            className="input flex-1"
             onKeyDown={e => e.key === 'Enter' && askQuestion()} />
-          <button onClick={askQuestion} disabled={askLoading || !question.trim()}
-            className="bg-purple-600 hover:bg-purple-500 disabled:bg-slate-700 text-white text-xs px-4 py-2 rounded-lg transition-colors">
+          <button onClick={askQuestion} disabled={askLoading || !question.trim()} className="btn btn-primary">
             {askLoading ? '...' : 'Ask'}
           </button>
         </div>
@@ -1099,8 +1071,26 @@ function LLMAnalysisPanel({ batchData }) {
   )
 }
 
+function FeaturesChart({ features, error }) {
+  if (error) {
+    return (
+      <div className="h-48 flex flex-col items-center justify-center bg-slate-800/20 rounded-lg border border-slate-700/30" role="alert">
+        <svg className="w-8 h-8 text-slate-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        <p className="text-xs text-slate-500">{error}</p>
+      </div>
+    )
+  }
 
-function FeaturesChart({ features }) {
+  if (!features || features.abnormal_return_day0 == null) {
+    return (
+      <div className="h-48 flex items-center justify-center bg-slate-800/20 rounded-lg border border-slate-700/30">
+        <p className="text-xs text-slate-500">No chart data available</p>
+      </div>
+    )
+  }
+
   const data = {
     labels: ['Day 0', 'Day +1', 'Day +5', 'Day +30'],
     datasets: [{
@@ -1108,32 +1098,38 @@ function FeaturesChart({ features }) {
       data: [features.abnormal_return_day0, features.abnormal_return_day1,
              features.abnormal_return_day5, features.abnormal_return_day30],
       backgroundColor: [
-        features.abnormal_return_day0 < 0 ? 'rgba(239,68,68,0.6)' : 'rgba(16,185,129,0.6)',
-        features.abnormal_return_day1 < 0 ? 'rgba(239,68,68,0.6)' : 'rgba(16,185,129,0.6)',
-        features.abnormal_return_day5 < 0 ? 'rgba(239,68,68,0.6)' : 'rgba(16,185,129,0.6)',
-        features.abnormal_return_day30 < 0 ? 'rgba(239,68,68,0.6)' : 'rgba(16,185,129,0.6)',
+        features.abnormal_return_day0 < 0 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)',
+        features.abnormal_return_day1 < 0 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)',
+        features.abnormal_return_day5 < 0 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)',
+        features.abnormal_return_day30 < 0 ? 'rgba(239,68,68,0.5)' : 'rgba(16,185,129,0.5)',
       ],
-      borderColor: [
-        features.abnormal_return_day0 < 0 ? '#ef4444' : '#10b981',
-        features.abnormal_return_day1 < 0 ? '#ef4444' : '#10b981',
-        features.abnormal_return_day5 < 0 ? '#ef4444' : '#10b981',
-        features.abnormal_return_day30 < 0 ? '#ef4444' : '#10b981',
-      ],
+      borderColor: ['#ef4444', '#ef4444', '#10b981', '#10b981'],
       borderWidth: 1, borderRadius: 4,
     }],
   }
   const options = {
     responsive: true, maintainAspectRatio: false,
-    plugins: { legend: { display: false } },
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          label: ctx => `${ctx.parsed.y >= 0 ? '+' : ''}${(ctx.parsed.y * 100).toFixed(2)}% abnormal return`,
+        },
+      },
+    },
     scales: {
       x: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
-      y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } },
+      y: {
+        grid: { color: '#1e293b' },
+        ticks: { color: '#64748b', callback: v => `${(v * 100).toFixed(1)}%` },
+      },
     },
   }
-  return <div className="h-48"><Bar data={data} options={options} /></div>
+  const arLabel = `Abnormal returns: Day 0 ${(features.abnormal_return_day0 * 100).toFixed(2)}%, Day +1 ${(features.abnormal_return_day1 * 100).toFixed(2)}%, Day +5 ${(features.abnormal_return_day5 * 100).toFixed(2)}%, Day +30 ${(features.abnormal_return_day30 * 100).toFixed(2)}%`
+  return <div className="h-48" role="img" aria-label={arLabel}>
+    <Bar data={data} options={options} />
+  </div>
 }
-
-// ── Main App ────────────────────────────────────────────────────────────
 
 function App() {
   const [activeTab, setActiveTab] = useState('single')
@@ -1144,15 +1140,12 @@ function App() {
   const [error, setError] = useState(null)
   const [health, setHealth] = useState(null)
 
-  // Upload state
   const [uploadData, setUploadData] = useState(null)
   const [batchData, setBatchData] = useState(null)
 
-  // Explainability state
   const [explainData, setExplainData] = useState(null)
   const [explainLoading, setExplainLoading] = useState(false)
 
-  // Settings state
   const [analysisConfig, setAnalysisConfig] = useState({
     estimation_window: 250, pre_event_window: 30, post_event_window: 60,
     recovery_max_days: 90, threshold_critical: -0.15, threshold_high: -0.07,
@@ -1163,10 +1156,7 @@ function App() {
   const [presets, setPresets] = useState([])
 
   const loadPresets = async () => {
-    try {
-      const res = await fetch(`${API}/config/presets`)
-      setPresets(await res.json())
-    } catch {}
+    try { setPresets(await (await fetch(`${API}/config/presets`)).json()) } catch {}
   }
 
   useEffect(() => {
@@ -1253,228 +1243,271 @@ function App() {
   ]
 
   return (
-    <div className="min-h-screen">
-      {/* Header */}
-      <header className="border-b border-slate-800 bg-slate-900/80 sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
+    <div className="min-h-screen" role="application" aria-label="BreachAlpha cyber-financial risk quantifier">
+      <header className="border-b border-slate-800/60 bg-slate-900/80 backdrop-blur-sm sticky top-0 z-50" role="banner">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3.5 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-lg bg-blue-600 flex items-center justify-center">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center shadow-sm">
+              <svg className="w-4.5 h-4.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
               </svg>
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white">BreachAlpha</h1>
-              <p className="text-xs text-slate-500">Cyber-Financial Risk Quantifier</p>
+              <h1 className="text-base font-bold text-white tracking-tight">BreachAlpha</h1>
+              <p className="text-[0.65rem] text-slate-500 -mt-0.5">Cyber-Financial Risk Quantifier</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <div className={`w-2 h-2 rounded-full ${health?.status === 'ok' ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+          <div className="flex items-center gap-2" role="status">
+            <div className={cn('status-dot', health?.status === 'ok' ? 'bg-emerald-400' : 'bg-slate-500')}
+              title={health?.status === 'ok' ? 'Backend connected' : 'Backend offline'} />
             <span className="text-xs text-slate-500">{health?.model_loaded ? 'Model Ready' : 'No Model'}</span>
           </div>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-8">
-        {/* Hero */}
-        <div className="text-center mb-8">
-          <h2 className="text-3xl font-bold text-white mb-3">Quantify Cyber Breach Impact</h2>
-          <p className="text-slate-400 max-w-2xl mx-auto">
-            Analyze how cybersecurity incidents affect stock prices. Upload a dataset or score individual companies.
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7" role="main" aria-live="polite">
+        <div className="text-center mb-7">
+          <h2 className="text-2xl sm:text-3xl font-bold text-white mb-2 tracking-tight">Quantify Cyber Breach Impact</h2>
+          <p className="text-sm text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Analyze how cybersecurity incidents affect stock prices. Upload a dataset or score individual companies using event study methodology.
           </p>
         </div>
 
-        {/* Tabs */}
         <TabBar tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-        {error && (
-          <div className="bg-red-500/10 border border-red-500/30 rounded-xl p-4 text-red-400 text-sm mb-6">{error}</div>
-        )}
-
-        {/* Single Analysis Tab */}
-        {activeTab === 'single' && (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-            <div className="lg:col-span-4 space-y-6">
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                  </svg>
-                  Analyze a Company
-                </h3>
-                <ScoreForm onScore={handleScore} loading={loading} />
-              </div>
-
-              <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-sm font-semibold text-white flex items-center gap-2">
-                    <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    Famous Breaches
-                  </h3>
-                  <button onClick={loadDemos} disabled={demosLoading}
-                    className="text-xs text-blue-400 hover:text-blue-300 disabled:text-slate-600">
-                    {demosLoading ? 'Loading...' : 'Load Demos'}
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {demos.length === 0 && !demosLoading && (
-                    <p className="text-xs text-slate-500 text-center py-4">Click "Load Demos" to see famous breach analysis</p>
-                  )}
-                  {demos.map((d, i) => (
-                    <DemoCard key={i} demo={d} onClick={handleDemoClick} onExplain={handleExplain} />
-                  ))}
-                </div>
+        <div role="tabpanel" id={`panel-${activeTab}`} aria-labelledby={`tab-${activeTab}`}>
+          {error && (
+            <div className="bg-red-500/10 border border-red-500/25 rounded-xl p-4 text-red-400 text-sm mb-6 flex items-start gap-3" role="alert">
+              <svg className="w-4 h-4 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div className="flex-1">
+                <p className="font-medium mb-0.5">Analysis Error</p>
+                <p className="opacity-80 text-xs">{error}</p>
+                <button onClick={() => setError(null)} className="text-xs text-red-300 hover:text-red-200 mt-1 underline">Dismiss</button>
               </div>
             </div>
+          )}
 
-            <div className="lg:col-span-8 space-y-6">
-              {!score && !error && (
-                <div className="bg-slate-800/30 border border-slate-700/30 rounded-2xl p-12 text-center">
-                  <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                      d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                  <h3 className="text-lg font-semibold text-slate-400 mb-2">No Analysis Yet</h3>
-                  <p className="text-sm text-slate-500">Enter a company name or load a demo to see the risk analysis</p>
+          {/* Single Analysis Tab */}
+          {activeTab === 'single' && (
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              <div className="lg:col-span-4 space-y-6">
+                <div className="card p-5">
+                  <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                    <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    Analyze a Company
+                  </h3>
+                  <ScoreForm onScore={handleScore} loading={loading} />
                 </div>
-              )}
 
-              {score && (
-                <>
-                  <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h3 className="text-xl font-bold text-white">{score.company}</h3>
-                        <span className="text-sm text-slate-500">{score.ticker}</span>
-                      </div>
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-semibold ${SEVERITY_BG[score.prediction] || 'bg-slate-700 text-slate-400 border border-slate-700'}`}>
-                        {score.prediction?.toUpperCase() || 'N/A'}
-                      </span>
-                    </div>
-                    <RiskGauge score={score.risk_score} prediction={score.prediction} />
+                <div className="card p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-white flex items-center gap-2">
+                      <svg className="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                      Famous Breaches
+                    </h3>
+                    <button onClick={loadDemos} disabled={demosLoading}
+                      className="btn-secondary text-xs py-1 px-2.5">
+                      {demosLoading ? (
+                        <><div className="animate-spin w-2.5 h-2.5 border-2 border-blue-400 border-t-transparent rounded-full" /> Loading</>
+                      ) : 'Load Demos'}
+                    </button>
                   </div>
+                  <div className="space-y-3">
+                    {demos.length === 0 && !demosLoading && (
+                      <div className="empty-state py-6">
+                        <svg className="w-10 h-10 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                        </svg>
+                        <h3>No Demos Loaded</h3>
+                        <p>Click "Load Demos" to analyze Equifax, Capital One, and Marriott breaches.</p>
+                      </div>
+                    )}
+                    {demos.length === 0 && demosLoading && (
+                      <div className="space-y-2.5">
+                        {[1, 2, 3].map(i => (
+                          <div key={i} className="card p-4">
+                            <Skeleton className="h-4 w-24 mb-2" />
+                            <Skeleton className="h-3 w-full mb-1" />
+                            <Skeleton className="h-3 w-3/4" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {demos.map((d, i) => (
+                      <DemoCard key={i} demo={d} onClick={handleDemoClick} onExplain={handleExplain} />
+                    ))}
+                  </div>
+                </div>
+              </div>
 
-                  <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-                    <h4 className="text-sm font-semibold text-white mb-4">Severity Probability</h4>
-                    <div className="space-y-3">
-                      {Object.entries(score.probabilities || {}).map(([label, prob]) => (
-                        <ProbabilityBar key={label} label={label} probability={prob} color={SEVERITY_COLORS[label]} />
+              <div className="lg:col-span-8 space-y-6" aria-live="polite">
+                {loading && !score && (
+                  <div className="card p-6">
+                    <div className="flex items-center gap-4 mb-5">
+                      <Skeleton className="h-5 w-32" />
+                      <Skeleton className="h-5 w-16 rounded-full" />
+                    </div>
+                    <div className="flex justify-center mb-5">
+                      <Skeleton className="w-36 h-36 rounded-full" />
+                    </div>
+                    <div className="space-y-2.5">
+                      {[1, 2, 3, 4].map(i => (
+                        <div key={i} className="flex items-center gap-3">
+                          <Skeleton className="h-3 w-16" />
+                          <Skeleton className="h-2.5 flex-1" />
+                          <Skeleton className="h-3 w-10" />
+                        </div>
                       ))}
                     </div>
-                    <div className="mt-4 pt-3 border-t border-slate-700/50 flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Confidence</span>
-                      <span className="text-white font-medium">{(score.confidence * 100).toFixed(1)}%</span>
-                    </div>
                   </div>
+                )}
+                {!score && !loading && !error && (
+                  <div className="card empty-state py-16">
+                    <svg className="w-14 h-14 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <h3 className="text-slate-400">No Analysis Yet</h3>
+                    <p className="text-slate-500">Enter a company name in the form or load a demo to see the risk analysis.</p>
+                  </div>
+                )}
 
-                  {score.features && (
-                    <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-                      <h4 className="text-sm font-semibold text-white mb-4">Event Study Features</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6">
-                        <FeatureCard label="AR (Day 0)" value={score.features.abnormal_return_day0} negative />
-                        <FeatureCard label="AR (Day +1)" value={score.features.abnormal_return_day1} negative />
-                        <FeatureCard label="AR (Day +5)" value={score.features.abnormal_return_day5} negative />
-                        <FeatureCard label="AR (Day +30)" value={score.features.abnormal_return_day30} negative />
-                        <FeatureCard label="CAR (-1,+1)" value={score.features.car_minus1_plus1} negative />
-                        <FeatureCard label="CAR (-5,+30)" value={score.features.car_minus5_plus30} negative />
-                        <FeatureCard label="Volatility Spike" value={score.features.volatility_spike} unit="x" />
-                        <FeatureCard label="Volume Change" value={score.features.volume_change} unit="x" />
-                        <FeatureCard label="Recovery" value={score.features.time_to_recovery ? `${score.features.time_to_recovery}d` : 'N/A'} />
+                {score && (
+                  <>
+                    <div className="card p-6 fade-in">
+                      <div className="flex items-center justify-between mb-4">
+                        <div>
+                          <h3 className="text-xl font-bold text-white">{score.company}</h3>
+                          <span className="text-sm text-slate-500">{score.ticker}</span>
+                        </div>
+                        <span className={cn('tag text-xs', SEVERITY_BG[score.prediction] || 'bg-slate-700/50 text-slate-400 border border-slate-700')}>
+                          {score.prediction?.toUpperCase() || 'N/A'}
+                        </span>
                       </div>
-                      <h4 className="text-sm font-semibold text-white mb-3">Abnormal Returns Timeline</h4>
-                      <FeaturesChart features={score.features} />
+                      <RiskGauge score={score.risk_score} prediction={score.prediction} />
                     </div>
-                  )}
-                </>
-              )}
-            </div>
-          </div>
-        )}
 
-        {/* Upload Tab */}
-        {activeTab === 'upload' && (
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                </svg>
-                Upload Breach Dataset
-              </h3>
-              <p className="text-xs text-slate-400 mb-4">
-                Upload a CSV, XLSX, or Excel file with breach data. The system will auto-detect columns
-                like company name, breach date, and records affected.
-              </p>
-              <FileUpload onUpload={handleUpload} onAnalyze={handleAnalyze} loading={loading} />
-            </div>
+                    <div className="card p-6 fade-in">
+                      <h4 className="text-sm font-semibold text-white mb-4">Severity Probability</h4>
+                      <div className="space-y-3">
+                        {Object.entries(score.probabilities || {}).map(([label, prob]) => (
+                          <ProbabilityBar key={label} label={label} probability={prob} color={SEVERITY_COLORS[label]} />
+                        ))}
+                      </div>
+                      <div className="mt-4 pt-3 border-t border-slate-700/40 flex items-center justify-between text-xs">
+                        <span className="text-slate-500">Confidence</span>
+                        <span className="text-white font-semibold">{(score.confidence * 100).toFixed(1)}%</span>
+                      </div>
+                    </div>
 
-            {uploadData && <DatasetPreview data={uploadData} />}
-            {batchData && <BatchResults data={batchData} />}
-            {batchData && batchData.analyzed > 0 && <LLMAnalysisPanel batchData={batchData} />}
-          </div>
-        )}
-
-        {/* Explain Tab */}
-        {activeTab === 'explain' && (
-          <div className="max-w-4xl mx-auto">
-            {explainLoading && (
-              <div className="text-center py-12">
-                <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" />
-                <p className="text-sm text-slate-400">Generating explanation...</p>
+                    {score.features && (
+                      <div className="card p-6 fade-in">
+                        <h4 className="text-sm font-semibold text-white mb-4">Event Study Features</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-6">
+                          <FeatureCard label="AR (Day 0)" value={score.features.abnormal_return_day0} negative />
+                          <FeatureCard label="AR (Day +1)" value={score.features.abnormal_return_day1} negative />
+                          <FeatureCard label="AR (Day +5)" value={score.features.abnormal_return_day5} negative />
+                          <FeatureCard label="AR (Day +30)" value={score.features.abnormal_return_day30} negative />
+                          <FeatureCard label="CAR (-1,+1)" value={score.features.car_minus1_plus1} negative />
+                          <FeatureCard label="CAR (-5,+30)" value={score.features.car_minus5_plus30} negative />
+                          <FeatureCard label="Volatility Spike" value={score.features.volatility_spike} unit="x" />
+                          <FeatureCard label="Volume Change" value={score.features.volume_change} unit="x" />
+                          <FeatureCard label="Recovery" value={score.features.time_to_recovery ? `${score.features.time_to_recovery}d` : 'N/A'} />
+                        </div>
+                        <h4 className="text-sm font-semibold text-white mb-3">Abnormal Returns Timeline</h4>
+                        <FeaturesChart features={score.features} />
+                      </div>
+                    )}
+                  </>
+                )}
               </div>
-            )}
-            {!explainData && !explainLoading && (
-              <div className="bg-slate-800/30 border border-slate-700/30 rounded-2xl p-12 text-center">
-                <svg className="w-16 h-16 text-slate-600 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
-                    d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                </svg>
-                <h3 className="text-lg font-semibold text-slate-400 mb-2">No Explanation Yet</h3>
-                <p className="text-sm text-slate-500">
-                  Go to "Single Analysis", load a demo, and click "Explain" to see the full calculation breakdown
+            </div>
+          )}
+
+          {/* Upload Tab */}
+          {activeTab === 'upload' && (
+            <div className="max-w-4xl mx-auto space-y-6">
+              <div className="card p-6">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                  </svg>
+                  Upload Breach Dataset
+                </h3>
+                <p className="text-xs text-slate-400 mb-4 leading-relaxed">
+                  Upload a CSV, XLSX, or Excel file with breach data. The system auto-detects columns
+                  for company name, breach date, and records affected.
                 </p>
+                <FileUpload onUpload={handleUpload} onAnalyze={handleAnalyze} loading={loading} />
               </div>
-            )}
-            {explainData && <ExplainabilityPanel data={explainData} />}
-          </div>
-        )}
-
-        {/* Settings Tab */}
-        {activeTab === 'settings' && (
-          <div className="max-w-4xl mx-auto">
-            <SettingsPanel
-              config={analysisConfig}
-              setConfig={setAnalysisConfig}
-              presets={presets}
-              onLoadPresets={loadPresets}
-            />
-
-            <div className="mt-6 bg-slate-800/40 border border-slate-700/50 rounded-2xl p-6">
-              <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
-                <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                    d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                Current Configuration
-              </h3>
-              <div className="bg-slate-900/50 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto">
-                <pre>{JSON.stringify(analysisConfig, null, 2)}</pre>
-              </div>
-              <p className="text-xs text-slate-500 mt-3">
-                These settings apply to all analyses. Use presets for quick configuration or adjust individual parameters.
-              </p>
+              {loading && !uploadData && !batchData && (
+                <div className="card p-6">
+                  <div className="space-y-3">
+                    <Skeleton className="h-4 w-32 mb-4" />
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      {[1, 2, 3].map(i => <Skeleton key={i} className="h-20 rounded-lg" />)}
+                    </div>
+                    <Skeleton className="h-40 rounded-lg" />
+                  </div>
+                </div>
+              )}
+              {uploadData && <DatasetPreview data={uploadData} />}
+              {batchData && <BatchResults data={batchData} />}
+              {batchData && batchData.analyzed > 0 && <LLMAnalysisPanel batchData={batchData} />}
             </div>
-          </div>
-        )}
+          )}
+
+          {/* Explain Tab */}
+          {activeTab === 'explain' && (
+            <div className="max-w-4xl mx-auto">
+              {explainLoading && (
+                <div className="card p-12 text-center">
+                  <div className="animate-spin w-7 h-7 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-4" role="status" aria-label="Loading explanation" />
+                  <p className="text-sm text-slate-400">Generating explainability report...</p>
+                </div>
+              )}
+              {!explainData && !explainLoading && (
+                <div className="card empty-state py-16">
+                  <svg className="w-14 h-14 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                  </svg>
+                  <h3>No Explanation Yet</h3>
+                  <p>Go to "Single Analysis", load a demo, and click "Explain" to see the full calculation breakdown.</p>
+                </div>
+              )}
+              {explainData && <ExplainabilityPanel data={explainData} />}
+            </div>
+          )}
+
+          {/* Settings Tab */}
+          {activeTab === 'settings' && (
+            <div className="max-w-4xl mx-auto">
+              <SettingsPanel config={analysisConfig} setConfig={setAnalysisConfig} presets={presets} onLoadPresets={loadPresets} />
+              <div className="card p-5 mt-6">
+                <h3 className="text-sm font-semibold text-white mb-4 flex items-center gap-2">
+                  <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  Current Configuration
+                </h3>
+                <div className="bg-slate-900/50 rounded-lg p-4 font-mono text-xs text-slate-300 overflow-x-auto">
+                  <pre>{JSON.stringify(analysisConfig, null, 2)}</pre>
+                </div>
+                <p className="text-xs text-slate-500 mt-3">These settings apply to all analyses. Use presets for quick config.</p>
+              </div>
+            </div>
+          )}
+        </div>
       </main>
 
-      <footer className="border-t border-slate-800 mt-12 py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-xs text-slate-600">
-          BreachAlpha v0.1.0 — Cyber-Financial Risk Quantifier — Event Study Methodology (MacKinlay, 1997)
+      <footer className="border-t border-slate-800/60 mt-12 py-5" role="contentinfo">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 text-center text-[0.65rem] text-slate-600">
+          BreachAlpha — Event Study Methodology (MacKinlay, 1997)
         </div>
       </footer>
     </div>
