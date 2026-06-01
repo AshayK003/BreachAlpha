@@ -18,6 +18,7 @@ from .feature_engine import (
     compute_car_vec,
     compute_daily_returns,
     compute_recovery_time_vec,
+    normalize_datetimelike_index,
     compute_volatility_ratio_vec,
     compute_volume_change_vec,
     classify_severity,
@@ -223,8 +224,12 @@ def generate_explanation(
     """
     steps = []
 
+    # Normalize indices to date-only for cross-exchange alignment
+    stock = normalize_datetimelike_index(event.stock_data)
+    market = normalize_datetimelike_index(event.market_data)
+
     # Find event date in stock data
-    common_dates = event.stock_data.index.intersection(event.market_data.index)
+    common_dates = stock.index.intersection(market.index)
     if len(common_dates) < 30:
         return ExplainabilityReport(
             company=event.company_name, ticker=event.ticker,
@@ -235,8 +240,8 @@ def generate_explanation(
             limitations=["Need at least 30 trading days of data around the breach date"],
         )
 
-    stock = event.stock_data.loc[common_dates]
-    market = event.market_data.loc[common_dates]
+    stock = stock.loc[common_dates]
+    market = market.loc[common_dates]
     stock_returns = compute_daily_returns(stock["Close"])
     market_returns = compute_daily_returns(market["Close"])
 

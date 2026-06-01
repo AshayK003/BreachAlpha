@@ -205,6 +205,21 @@ def classify_severity(car: float, config: AnalysisConfig = None) -> str:
 # ── Optimized Feature Computation ───────────────────────────────────────
 
 
+def normalize_datetimelike_index(df: pd.DataFrame) -> pd.DataFrame:
+    """Normalize a DataFrame's index to date-only timestamps.
+
+    Strips timezone, removes time components, and deduplicates.
+    Returns a copy — the original is not mutated.
+    """
+    idx = pd.DatetimeIndex([d if isinstance(d, pd.Timestamp) else pd.Timestamp(d) for d in df.index])
+    if idx.tz is not None:
+        idx = idx.tz_localize(None)
+    idx = pd.DatetimeIndex([d.replace(hour=0, minute=0, second=0, microsecond=0) for d in idx])
+    out = df.copy()
+    out.index = idx
+    return out[~out.index.duplicated(keep='last')]
+
+
 def compute_features(
     event: BreachEvent,
     config: AnalysisConfig = None,
@@ -226,26 +241,8 @@ def compute_features(
         return None
 
     # Normalize timezone-naive datetimes to date-only for cross-exchange alignment
-    stock_idx = pd.DatetimeIndex([d if isinstance(d, pd.Timestamp) else pd.Timestamp(d) for d in stock.index])
-    market_idx = pd.DatetimeIndex([d if isinstance(d, pd.Timestamp) else pd.Timestamp(d) for d in market.index])
-    # Remove timezone info and normalize to date
-    if stock_idx.tz is not None:
-        stock_idx = stock_idx.tz_localize(None)
-    if market_idx.tz is not None:
-        market_idx = market_idx.tz_localize(None)
-    # Normalize to UTC date only (strip time)
-    stock_idx = pd.DatetimeIndex([d.replace(hour=0, minute=0, second=0, microsecond=0) for d in stock_idx])
-    market_idx = pd.DatetimeIndex([d.replace(hour=0, minute=0, second=0, microsecond=0) for d in market_idx])
-
-    # Re-index stock and market with normalized dates
-    stock = stock.copy()
-    stock.index = stock_idx
-    market = market.copy()
-    market.index = market_idx
-
-    # Remove duplicate index entries after normalization
-    stock = stock[~stock.index.duplicated(keep='last')]
-    market = market[~market.index.duplicated(keep='last')]
+    stock = normalize_datetimelike_index(stock)
+    market = normalize_datetimelike_index(market)
 
     # Pre-align on common dates (single intersection, cached)
     common_dates = stock.index.intersection(market.index)
