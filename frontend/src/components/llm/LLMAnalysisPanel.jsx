@@ -71,22 +71,22 @@ export function LLMAnalysisPanel({ batchData }) {
 
   if (!llmStatus?.available) {
     return (
-      <Card className="bg-card border border-border mt-6">
+      <Card className="terminal-card mt-6">
         <CardContent className="p-5">
-          <h3 className="text-xs font-semibold tracking-wider uppercase mb-2 flex items-center gap-2 font-mono text-muted-foreground">
-            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <h3 className="text-xs font-semibold tracking-wider uppercase mb-2 flex items-center gap-2 font-mono text-dim">
+            <svg className="w-4 h-4 text-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
             </svg>
             LLM Analysis
           </h3>
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-xs leading-relaxed text-secondary-foreground">
             Connect <strong className="text-foreground">LM Studio</strong> with Qwen 3.5 9B at{' '}
-            <code className="px-1.5 py-0.5 rounded bg-surface text-cyan-600 font-mono text-[0.65rem]">
+            <code className="px-1.5 py-0.5 rounded bg-surface text-cyan font-mono text-[0.65rem]">
               192.168.56.1:1234
             </code>{' '}
             for AI insights.
           </p>
-          <p className="text-xs mt-1 text-muted-foreground">
+          <p className="text-xs mt-1 text-secondary-foreground">
             Start LM Studio and load a model to enable this feature.
           </p>
         </CardContent>
@@ -95,10 +95,10 @@ export function LLMAnalysisPanel({ batchData }) {
   }
 
   return (
-    <Card className="bg-card border border-border mt-6 animate-in fade-in">
+    <Card className="terminal-card mt-6 fade-in">
       <CardContent className="p-5">
-        <h3 className="text-xs font-semibold tracking-wider uppercase mb-4 flex items-center gap-2 font-mono text-muted-foreground">
-          <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <h3 className="text-xs font-semibold tracking-wider uppercase mb-4 flex items-center gap-2 font-mono text-dim">
+          <svg className="w-4 h-4 text-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
           </svg>
           LLM Analysis
@@ -124,18 +124,18 @@ export function LLMAnalysisPanel({ batchData }) {
         </Button>
 
         {analysis && (
-          <div className="rounded-lg p-4 mb-4 bg-background border border-border">
-            <h4 className="text-xs font-semibold tracking-wider uppercase mb-2 text-muted-foreground">
+          <div className="rounded-lg p-4 mb-4 bg-background border border-border fade-in">
+            <h4 className="text-xs font-semibold tracking-wider uppercase mb-2 text-dim">
               AI Analysis
             </h4>
-            <div className="text-xs whitespace-pre-wrap leading-relaxed text-muted-foreground">
+            <div className="text-xs whitespace-pre-wrap leading-relaxed text-secondary-foreground">
               {analysis}
             </div>
           </div>
         )}
 
         <div className="pt-4 border-t border-border">
-          <h4 className="text-xs font-semibold tracking-wider uppercase mb-2 text-muted-foreground">
+          <h4 className="text-xs font-semibold tracking-wider uppercase mb-2 text-dim">
             Ask about this data
           </h4>
           <div className="flex gap-2">
@@ -153,8 +153,8 @@ export function LLMAnalysisPanel({ batchData }) {
             </Button>
           </div>
           {answer && (
-            <div className="mt-3 rounded-lg p-3 bg-background border border-border">
-              <div className="text-xs whitespace-pre-wrap text-muted-foreground">{answer}</div>
+            <div className="mt-3 rounded-lg p-3 bg-background border border-border fade-in">
+              <div className="text-xs whitespace-pre-wrap text-secondary-foreground">{answer}</div>
             </div>
           )}
         </div>

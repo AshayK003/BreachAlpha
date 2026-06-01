@@ -666,10 +666,22 @@ class DataFetcher:
             except Exception as e:
                 logger.warning("Primary batch failed: %s", e)
 
-        # Fallback to sequential
+        # Fallback to parallel per-ticker fetch
+        from concurrent.futures import ThreadPoolExecutor, as_completed
+
         results = {}
-        for ticker in tickers:
-            results[ticker] = self.fetch(ticker, start, end)
+        with ThreadPoolExecutor(max_workers=min(8, len(tickers))) as pool:
+            future_to_ticker = {
+                pool.submit(self.fetch, ticker, start, end): ticker
+                for ticker in tickers
+            }
+            for future in as_completed(future_to_ticker):
+                ticker = future_to_ticker[future]
+                try:
+                    results[ticker] = future.result()
+                except Exception as e:
+                    logger.warning("Parallel fetch failed for %s: %s", ticker, e)
+                    results[ticker] = pd.DataFrame()
         return results
 
     def get_source_status(self) -> dict:

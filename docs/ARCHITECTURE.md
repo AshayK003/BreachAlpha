@@ -29,11 +29,14 @@ User Input (company/ticker/file)
 │    ├─ Alpha Vantage (API fallback)                      │
 │    ├─ NSE India (Indian stocks)                         │
 │    └─ Yahoo Finance Scrape (HTML fallback)              │
+│    └─ All fetches parallelized (ThreadPoolExecutor)     │
 ├─────────────────────────────────────────────────────────┤
 │  feature_engine.py (event study: AR, CAR, volatility)   │
+│    → ProcessPoolExecutor (true parallelism, GIL-free)   │
 │    → Date-normalized indices for cross-exchange stocks  │
 ├─────────────────────────────────────────────────────────┤
 │  model.py (XGBoost → severity prediction)               │
+│    → Batch prediction (single predict() call)           │
 │  explainability.py (step-by-step breakdown)             │
 ├─────────────────────────────────────────────────────────┤
 │  llm_integration.py (LM Studio enrichment) [optional]   │
@@ -41,6 +44,21 @@ User Input (company/ticker/file)
     ↓
 Response (risk score, features, severity, probabilities)
 ```
+
+## Performance Architecture
+
+The `/api/upload/analyze` endpoint runs the full pipeline in `asyncio.to_thread()` to avoid blocking the FastAPI event loop. Inside the pipeline thread:
+
+```
+_run_analysis_pipeline():
+  1. Ticker resolution    → ThreadPoolExecutor(8)   [I/O-bound, parallel]
+  2. Stock batch fetch     → ThreadPoolExecutor(8)   [I/O-bound, parallel]
+  3. Market data fetch     → ThreadPoolExecutor(8)   [I/O-bound, parallel]
+  4. Feature computation   → ProcessPoolExecutor(4)  [CPU-bound, GIL-free]
+  5. Severity prediction   → Batch predict() call    [single model call]
+```
+
+Thread/process limits: max 8 I/O threads, max 4 CPU processes. All parallel paths have sequential fallbacks for safety.
 
 ## Module Dependencies
 

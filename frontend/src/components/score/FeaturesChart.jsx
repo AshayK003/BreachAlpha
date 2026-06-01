@@ -15,10 +15,10 @@ export function FeaturesChart({ features, error }) {
         className="h-48 flex flex-col items-center justify-center bg-surface rounded-lg border border-border"
         role="alert"
       >
-        <svg className="w-8 h-8 text-muted-foreground mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className="w-8 h-8 text-dim mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
-        <p className="text-xs text-muted-foreground">{error}</p>
+        <p className="text-xs text-secondary-foreground">{error}</p>
       </div>
     )
   }
@@ -26,7 +26,7 @@ export function FeaturesChart({ features, error }) {
   if (!features || features.abnormal_return_day0 == null) {
     return (
       <div className="h-48 flex items-center justify-center bg-surface rounded-lg border border-border">
-        <p className="text-xs text-muted-foreground">No chart data available</p>
+        <p className="text-xs text-secondary-foreground">No chart data available</p>
       </div>
     )
   }
@@ -46,23 +46,25 @@ export function FeaturesChart({ features, error }) {
         <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
           <XAxis
             dataKey="name"
-            tick={{ fill: '#4a5568', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+            tick={{ fill: '#5a6a82', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={{ color: '#151d2e' }}
             tickLine={false}
           />
           <YAxis
-            tick={{ fill: '#4a5568', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
+            tick={{ fill: '#5a6a82', fontSize: 10, fontFamily: 'JetBrains Mono, monospace' }}
             axisLine={{ color: '#151d2e' }}
             tickLine={false}
             tickFormatter={(v) => `${(v * 100).toFixed(1)}%`}
           />
           <Tooltip
             contentStyle={{
-              background: '#0f1520',
+              background: '#0a0f1a',
               border: '1px solid #1e293b',
               borderRadius: '8px',
               fontSize: '11px',
               fontFamily: 'JetBrains Mono, monospace',
+              color: '#e8edf5',
+              boxShadow: '0 4px 24px rgba(0, 0, 0, 0.4)',
             }}
             formatter={(value) => [
               `${value >= 0 ? '+' : ''}${(value * 100).toFixed(2)}% abnormal return`,

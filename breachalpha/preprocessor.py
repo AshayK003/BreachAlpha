@@ -166,20 +166,22 @@ def validate_dataset(df: pd.DataFrame) -> dict:
 
 
 def resolve_tickers(df: pd.DataFrame, overrides: dict[str, str] = None, skip: bool = False) -> tuple[pd.DataFrame, float]:
-    """Resolve tickers with user override support."""
+    """Resolve tickers with user override support.
+
+    Uses ThreadPoolExecutor for parallel ticker resolution when rows > 5.
+    """
+    from concurrent.futures import ThreadPoolExecutor, as_completed
     from .ticker_resolver import is_likely_ticker
 
     if skip:
         return df, 0.0
 
-    tickers_out = []
     has_ticker_col = "ticker" in df.columns
     has_company_col = "company_name" in df.columns
 
-    for idx, row in df.iterrows():
+    def _resolve_row(idx, row):
         ticker = row.get("ticker") if has_ticker_col else None
 
-        # If ticker is missing, empty, or doesn't look like a valid ticker, resolve it
         if ticker is None or (isinstance(ticker, str) and not ticker.strip()) or (isinstance(ticker, float) and pd.isna(ticker)):
             ticker = None
         elif isinstance(ticker, str) and not is_likely_ticker(ticker.strip()):
@@ -192,7 +194,25 @@ def resolve_tickers(df: pd.DataFrame, overrides: dict[str, str] = None, skip: bo
             else:
                 ticker = resolve_ticker(name_str)
 
-        tickers_out.append(ticker if ticker else None)
+        return idx, ticker if ticker else None
+
+    tickers_out = [None] * len(df)
+
+    if len(df) > 5:
+        # Parallel resolution for larger datasets
+        with ThreadPoolExecutor(max_workers=min(8, len(df))) as pool:
+            futures = {
+                pool.submit(_resolve_row, idx, row): idx
+                for idx, row in df.iterrows()
+            }
+            for future in as_completed(futures):
+                idx, ticker = future.result()
+                tickers_out[idx] = ticker
+    else:
+        # Sequential for small datasets (avoids thread overhead)
+        for idx, row in df.iterrows():
+            _, ticker = _resolve_row(idx, row)
+            tickers_out[idx] = ticker
 
     df["ticker"] = tickers_out
     resolved = sum(1 for t in tickers_out if t is not None)

@@ -199,7 +199,7 @@ export function ScoreForm({ onScore, loading }) {
               </div>
             )}
             {!searching && searchResults.length === 0 && company.length >= 2 && (
-              <div className="px-3 py-2.5 text-xs text-muted-foreground text-center">
+              <div className="px-3 py-2.5 text-xs text-secondary-foreground text-center">
                 No results found
               </div>
             )}
@@ -211,7 +211,7 @@ export function ScoreForm({ onScore, loading }) {
                 aria-selected={i === activeIdx}
                 onClick={() => selectResult(r)}
                 className={cn(
-                  'w-full px-3 py-2 text-left transition-colors border-b border-border/30 last:border-0',
+                  'w-full px-3 py-2 text-left transition-colors duration-200 border-b border-border/30 last:border-0',
                   i === activeIdx ? 'bg-cyan-600/20' : 'hover:bg-surface'
                 )}
               >
@@ -220,7 +220,7 @@ export function ScoreForm({ onScore, loading }) {
                     <span className="text-sm text-foreground font-medium">
                       {r.ticker_full || r.symbol}
                     </span>
-                    <span className="text-xs text-muted-foreground ml-2">{r.exchange}</span>
+                    <span className="text-xs text-secondary-foreground ml-2">{r.exchange}</span>
                   </div>
                   {r.price && (
                     <span className="text-xs text-emerald-400 font-mono">
@@ -228,7 +228,7 @@ export function ScoreForm({ onScore, loading }) {
                     </span>
                   )}
                 </div>
-                <div className="text-xs text-muted-foreground truncate">{r.name}</div>
+                <div className="text-xs text-secondary-foreground truncate">{r.name}</div>
               </button>
             ))}
           </div>
@@ -258,13 +258,13 @@ export function ScoreForm({ onScore, loading }) {
       </Button>
 
       {showBreaches && breachResults.length > 0 && (
-        <div className="bg-card border border-border rounded-lg p-3 space-y-2 animate-in fade-in" role="listbox" aria-label="Breach incidents">
+        <div className="bg-card border border-border rounded-lg p-3 space-y-2 fade-in" role="listbox" aria-label="Breach incidents">
           <div className="flex items-center justify-between">
-            <span className="text-xs text-muted-foreground font-medium">Breach Incidents Found</span>
+            <span className="text-xs text-secondary-foreground font-medium">Breach Incidents Found</span>
             <button
               type="button"
               onClick={() => setShowBreaches(false)}
-              className="text-xs text-muted-foreground hover:text-foreground"
+              className="text-xs text-secondary-foreground hover:text-foreground transition-colors"
               aria-label="Close breach results"
             >
               &#x2715;
@@ -276,7 +276,7 @@ export function ScoreForm({ onScore, loading }) {
               type="button"
               onClick={() => selectBreach(inc)}
               role="option"
-              className="w-full text-left bg-surface border border-border rounded-lg px-3 py-2 hover:border-amber-500/40 transition-colors"
+              className="w-full text-left bg-surface border border-border rounded-lg px-3 py-2 hover:border-amber-500/40 transition-all duration-200 hover:bg-surface-raised"
             >
               <div className="flex items-center justify-between mb-0.5">
                 <span className="text-xs text-foreground font-medium">{inc.date}</span>
@@ -291,21 +291,21 @@ export function ScoreForm({ onScore, loading }) {
                   {inc.breach_type?.replace(/_/g, ' ')}
                 </span>
               </div>
-              <p className="text-xs text-muted-foreground line-clamp-1">{inc.description}</p>
+              <p className="text-xs text-secondary-foreground line-clamp-1">{inc.description}</p>
               {inc.records_affected > 0 && (
-                <span className="text-[0.65rem] text-muted-foreground mt-0.5 block">
+                <span className="text-[0.65rem] text-secondary-foreground mt-0.5 block">
                   {(inc.records_affected / 1_000_000).toFixed(1)}M records
                 </span>
               )}
             </button>
           ))}
-          <p className="text-[0.65rem] text-muted-foreground text-center">
+          <p className="text-[0.65rem] text-secondary-foreground text-center">
             Click an incident to auto-fill
           </p>
         </div>
       )}
       {showBreaches && breachError && (
-        <p className="text-xs text-muted-foreground text-center py-1" role="alert">
+        <p className="text-xs text-secondary-foreground text-center py-1" role="alert">
           {breachError}
         </p>
       )}

@@ -52,21 +52,23 @@ export function FileUpload({ onUpload, onAnalyze, loading }) {
         onDrop={handleDrop}
       >
         <label
-          className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-            dragActive ? 'border-cyan-500 bg-cyan-500/5' : 'border-border bg-card'
+          className={`flex flex-col items-center justify-center w-full h-32 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-300 ${
+            dragActive
+              ? 'border-cyan-500 bg-cyan-500/5 shadow-[0_0_20px_rgba(0,240,255,0.1)]'
+              : 'border-border bg-card hover:border-border-bright hover:bg-surface'
           }`}
           role="button"
           aria-label="Upload a CSV, XLSX, or TSV file"
         >
           <div className="flex flex-col items-center justify-center pt-2 pb-3">
-            <svg className="w-7 h-7 mb-2 text-muted-foreground" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="w-7 h-7 mb-2 text-dim" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
             </svg>
             <p className="text-xs">
-              <span className="font-semibold text-cyan-400">Click to upload</span>{' '}
-              <span className="text-muted-foreground">or drag and drop</span>
+              <span className="font-semibold text-cyan">Click to upload</span>{' '}
+              <span className="text-secondary-foreground">or drag and drop</span>
             </p>
-            <p className="text-[0.65rem] mt-0.5 text-muted-foreground">
+            <p className="text-[0.65rem] mt-0.5 text-dim">
               CSV, XLSX, Excel, TSV (max 50 MB)
             </p>
           </div>
@@ -84,19 +86,19 @@ export function FileUpload({ onUpload, onAnalyze, loading }) {
       )}
 
       {file && (
-        <div className="bg-surface border border-border rounded-lg p-3 flex items-center justify-between">
+        <div className="bg-surface border border-border rounded-lg p-3 flex items-center justify-between fade-in">
           <div className="flex items-center gap-2.5 min-w-0">
             <svg className="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
             <span className="text-sm text-foreground truncate">{file.name}</span>
-            <span className="text-xs text-muted-foreground shrink-0">
+            <span className="text-xs text-dim shrink-0">
               ({(file.size / 1024).toFixed(1)} KB)
             </span>
           </div>
           <button
             onClick={() => setFile(null)}
-            className="text-xs text-muted-foreground hover:text-red-400 shrink-0 ml-3"
+            className="text-xs text-dim hover:text-red-400 shrink-0 ml-3 transition-colors"
           >
             Remove
           </button>

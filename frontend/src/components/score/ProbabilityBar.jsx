@@ -5,7 +5,7 @@ export function ProbabilityBar({ label, probability, color }) {
       role="group"
       aria-label={`${label}: ${(probability * 100).toFixed(1)}%`}
     >
-      <span className="w-20 text-[0.6875rem] capitalize tracking-wide text-muted-foreground">
+      <span className="w-20 text-[0.6875rem] capitalize tracking-wide text-dim">
         {label}
       </span>
       <div
@@ -16,15 +16,16 @@ export function ProbabilityBar({ label, probability, color }) {
         aria-valuemax={100}
       >
         <div
-          className="h-full rounded-full transition-all duration-700"
+          className="h-full rounded-full transition-all duration-1000 ease-out"
           style={{
             width: `${probability * 100}%`,
             backgroundColor: color,
-            boxShadow: `0 0 8px ${color}40`,
+            boxShadow: `0 0 10px ${color}30`,
+            transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
           }}
         />
       </div>
-      <span className="w-14 text-[0.6875rem] text-right font-mono text-muted-foreground">
+      <span className="w-14 text-[0.6875rem] text-right font-mono text-dim">
         {(probability * 100).toFixed(1)}%
       </span>
     </div>

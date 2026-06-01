@@ -721,6 +721,178 @@ async def upload_dataset(file: UploadFile = File(...)):
             os.unlink(tmp_path)
 
 
+def _run_analysis_pipeline(
+    preprocess_result: "PreprocessingResult",
+    start_date: str = "2010-01-01",
+) -> list[dict]:
+    """Run stages 4-8 of the analyze pipeline (ticker resolution, stock fetch,
+    market fetch, feature computation, prediction).
+
+    Designed to run inside asyncio.to_thread() so it doesn't block the event loop.
+    Uses ThreadPoolExecutor for parallel I/O (market/stock fetches).
+    Uses ProcessPoolExecutor for parallel CPU work (feature computation).
+    Uses batch prediction instead of per-row prediction.
+    """
+    from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, as_completed
+    from functools import partial
+
+    df = preprocess_result.df
+    model = load_model()
+    if model is None:
+        model = _train_synthetic()["model"]
+
+    # ── Stage 4: Ticker resolution + row mapping ──────────────────────
+    tickers_needed = []
+    row_map = []
+    for _, row in df.iterrows():
+        company = str(row.get("company_name", ""))
+        ticker = row.get("ticker")
+        breach_date = row.get("breach_date")
+        records = int(row.get("records_affected", 0))
+        breach_type = str(row.get("breach_type", "data_leak"))
+
+        if not ticker or pd.isna(ticker):
+            ticker = resolve_ticker(company)
+        if ticker:
+            tickers_needed.append(str(ticker))
+            row_map.append((company, str(ticker), breach_date, records, breach_type))
+
+    if not tickers_needed:
+        return []
+
+    # ── Stage 5: Batch stock fetch (parallel fallback) ────────────────
+    stock_cache = fetch_stock_batch(list(set(tickers_needed)), start=start_date)
+
+    # ── Stage 6: Build events + parallel market data fetch ────────────
+    events = []
+    benchmarks_needed = set()
+
+    for company, ticker, breach_date, records, breach_type in row_map:
+        stock_data = stock_cache.get(ticker, pd.DataFrame())
+        if stock_data.empty:
+            alt_ticker = resolve_ticker(company)
+            if alt_ticker and alt_ticker != ticker:
+                alt_data = fetch_stock_data(alt_ticker, start=start_date)
+                if not alt_data.empty:
+                    stock_data = alt_data
+                    stock_cache[alt_ticker] = alt_data
+        if not stock_data.empty:
+            bm = detect_benchmark(ticker)
+            benchmarks_needed.add(bm)
+            events.append(BreachEvent(
+                company_name=company, ticker=ticker,
+                breach_date=pd.Timestamp(breach_date),
+                pwn_count=records, breach_type=breach_type,
+                stock_data=stock_data, market_data=pd.DataFrame(),
+                benchmark=bm,
+            ))
+
+    if not events:
+        return []
+
+    # Parallel market data fetch — all unique benchmarks concurrently
+    market_cache = {}
+    if len(benchmarks_needed) == 1:
+        bm = next(iter(benchmarks_needed))
+        market_cache[bm] = fetch_market_data(start=start_date, benchmark=bm)
+    else:
+        with ThreadPoolExecutor(max_workers=min(8, len(benchmarks_needed))) as pool:
+            future_to_bm = {
+                pool.submit(fetch_market_data, start=start_date, benchmark=bm): bm
+                for bm in benchmarks_needed
+            }
+            for future in as_completed(future_to_bm):
+                bm = future_to_bm[future]
+                try:
+                    market_cache[bm] = future.result()
+                except Exception as e:
+                    logger.warning("Market fetch failed for %s: %s", bm, e)
+                    market_cache[bm] = pd.DataFrame()
+
+    # Inject pre-fetched market data into events
+    for event in events:
+        event.market_data = market_cache.get(event.benchmark, pd.DataFrame())
+
+    # ── Stage 7: Compute features (ProcessPoolExecutor) ──────────────
+    features_df = compute_features_batch(events)
+
+    if features_df.empty:
+        return []
+
+    # ── Stage 8: Batch prediction ─────────────────────────────────────
+    results = []
+    available_cols = [col for col in SEVERITY_LABELS]  # placeholder, real cols set below
+
+    try:
+        from .model import FEATURE_COLS as _FEATURE_COLS
+        feature_cols = [c for c in _FEATURE_COLS if c in features_df.columns]
+        all_features = features_df[feature_cols].replace([np.inf, -np.inf], np.nan)
+        if "time_to_recovery" in all_features.columns:
+            all_features["time_to_recovery"] = pd.to_numeric(all_features["time_to_recovery"], errors="coerce")
+        all_features = all_features.fillna(0)
+
+        raw_predictions = model.predict(all_features)
+        probas = model.predict_proba(all_features)
+
+        weights = {"low": 10, "medium": 35, "high": 65, "critical": 95}
+
+        for idx, (_, feat_row) in enumerate(features_df.iterrows()):
+            fd = feat_row.to_dict()
+            pred_idx = int(raw_predictions[idx])
+            proba = probas[idx]
+            prediction = SEVERITY_LABELS[pred_idx]
+            probabilities = {label: float(p) for label, p in zip(SEVERITY_LABELS, proba)}
+            risk_score = round(sum(probabilities[label] * weights[label] for label in SEVERITY_LABELS), 1)
+            confidence = round(float(max(proba)), 3)
+
+            results.append({
+                "company": fd["company_name"],
+                "ticker": fd["ticker"],
+                "breach_date": fd["breach_date"],
+                "records_affected": int(fd["pwn_count"]),
+                "breach_type": fd["breach_type"],
+                "risk_score": risk_score,
+                "prediction": prediction,
+                "confidence": confidence,
+                "probabilities": probabilities,
+                "status": "ok",
+            })
+    except Exception as e:
+        logger.warning("Batch prediction failed, falling back to per-row: %s", e)
+        for _, feat_row in features_df.iterrows():
+            fd = feat_row.to_dict()
+            try:
+                pred = predict_severity(model, pd.DataFrame([fd]))
+                results.append({
+                    "company": fd["company_name"],
+                    "ticker": fd["ticker"],
+                    "breach_date": fd["breach_date"],
+                    "records_affected": int(fd["pwn_count"]),
+                    "breach_type": fd["breach_type"],
+                    "risk_score": pred["risk_score"],
+                    "prediction": pred["prediction"],
+                    "confidence": pred["confidence"],
+                    "probabilities": pred["probabilities"],
+                    "status": "ok",
+                })
+            except Exception as e2:
+                results.append({
+                    "company": fd.get("company_name", "?"),
+                    "ticker": fd.get("ticker", "?"),
+                    "breach_date": fd.get("breach_date", "?"),
+                    "records_affected": int(fd.get("pwn_count", 0)),
+                    "breach_type": fd.get("breach_type", "?"),
+                    "risk_score": 0,
+                    "prediction": "error",
+                    "confidence": 0,
+                    "probabilities": {},
+                    "status": "failed",
+                    "error": str(e2),
+                })
+
+    return results
+
+
 @app.post("/api/upload/analyze", response_model=BatchResponse)
 async def upload_and_analyze(file: UploadFile = File(...)):
     """Upload a dataset and analyze all breaches in it."""
@@ -759,83 +931,11 @@ async def upload_and_analyze(file: UploadFile = File(...)):
     if not result.success or result.df is None:
         return BatchResponse(total=0, analyzed=0, failed=0, results=[])
 
-    df = result.df
+    # Run the analysis pipeline in a thread to avoid blocking the event loop
+    raw_results = await asyncio.to_thread(_run_analysis_pipeline, result)
 
-    tickers_needed = []
-    row_map = []
-    for _, row in df.iterrows():
-        company = str(row.get("company_name", ""))
-        ticker = row.get("ticker")
-        breach_date = row.get("breach_date")
-        records = int(row.get("records_affected", 0))
-        breach_type = str(row.get("breach_type", "data_leak"))
-
-        if not ticker or pd.isna(ticker):
-            ticker = resolve_ticker(company)
-        if ticker:
-            tickers_needed.append(str(ticker))
-            row_map.append((company, str(ticker), breach_date, records, breach_type))
-
-    if not tickers_needed:
-        return BatchResponse(total=0, analyzed=0, failed=0, results=[])
-
-    stock_cache = fetch_stock_batch(list(set(tickers_needed)), start="2010-01-01")
-
-    model = load_model()
-    if model is None:
-        model = _train_synthetic()["model"]
-
-    events = []
-    for company, ticker, breach_date, records, breach_type in row_map:
-        stock_data = stock_cache.get(ticker, pd.DataFrame())
-        # Fallback: if ticker from CSV resolved to no stock data, try company name
-        if stock_data.empty:
-            alt_ticker = resolve_ticker(company)
-            if alt_ticker and alt_ticker != ticker:
-                alt_data = fetch_stock_data(alt_ticker, start="2010-01-01")
-                if not alt_data.empty:
-                    stock_data = alt_data
-                    stock_cache[alt_ticker] = alt_data
-        if not stock_data.empty:
-            bm = detect_benchmark(ticker)
-            market_data = fetch_market_data(start="2010-01-01", benchmark=bm)
-            events.append(BreachEvent(
-                company_name=company, ticker=ticker,
-                breach_date=pd.Timestamp(breach_date),
-                pwn_count=records, breach_type=breach_type,
-                stock_data=stock_data, market_data=market_data,
-                benchmark=bm,
-            ))
-
-    if not events:
-        return BatchResponse(total=0, analyzed=0, failed=0, results=[])
-
-    features_df = compute_features_batch(events)
-
-    results = []
-    for _, feat_row in features_df.iterrows():
-        fd = feat_row.to_dict()
-        try:
-            pred = predict_severity(model, pd.DataFrame([fd]))
-            results.append(BatchResult(
-                company=fd["company_name"], ticker=fd["ticker"],
-                breach_date=fd["breach_date"],
-                records_affected=int(fd["pwn_count"]),
-                breach_type=fd["breach_type"],
-                risk_score=pred["risk_score"], prediction=pred["prediction"],
-                confidence=pred["confidence"], probabilities=pred["probabilities"],
-                status="ok",
-            ))
-        except Exception as e:
-            results.append(BatchResult(
-                company=fd.get("company_name", "?"), ticker=fd.get("ticker", "?"),
-                breach_date=fd.get("breach_date", "?"),
-                records_affected=int(fd.get("pwn_count", 0)),
-                breach_type=fd.get("breach_type", "?"),
-                risk_score=0, prediction="error", confidence=0,
-                probabilities={}, status="failed", error=str(e),
-            ))
-
+    # Convert dicts to BatchResult models
+    results = [BatchResult(**r) for r in raw_results]
     analyzed = sum(1 for r in results if r.status == "ok")
 
     return BatchResponse(total=len(results), analyzed=analyzed, failed=len(results)-analyzed, results=results)

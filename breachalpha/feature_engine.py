@@ -321,8 +321,8 @@ def compute_features_batch(
 ) -> pd.DataFrame:
     """Compute features for a batch of breach events.
 
-    Uses ThreadPoolExecutor for I/O-bound stock data processing.
-    Falls back to sequential if parallel fails.
+    Uses ProcessPoolExecutor for true parallelism on CPU-bound work (bypasses GIL).
+    Falls back to sequential if parallel fails (e.g., pickling error).
     """
     if not events:
         return pd.DataFrame()
@@ -330,28 +330,21 @@ def compute_features_batch(
     if config is None:
         config = AnalysisConfig()
 
-    # Use parallel processing for large batches
+    # Use ProcessPoolExecutor for real parallelism on CPU-bound pandas/numpy work
     if len(events) > 5 and max_workers > 1:
         try:
-            results = []
-            with ThreadPoolExecutor(max_workers=min(max_workers, len(events))) as executor:
-                future_to_event = {
-                    executor.submit(compute_features, event, config): event
-                    for event in events
-                }
-                for future in as_completed(future_to_event):
-                    try:
-                        result = future.result()
-                        if result is not None:
-                            results.append(result.to_dict())
-                    except Exception as e:
-                        event = future_to_event[future]
-                        logger.warning("Feature computation failed for %s: %s", event.company_name, e)
+            from concurrent.futures import ProcessPoolExecutor
+            from functools import partial
 
+            worker = partial(compute_features, config=config)
+            with ProcessPoolExecutor(max_workers=min(max_workers, len(events))) as executor:
+                raw_results = list(executor.map(worker, events))
+
+            results = [r.to_dict() for r in raw_results if r is not None]
             if results:
                 return pd.DataFrame(results)
         except Exception as e:
-            logger.warning("Parallel computation failed, falling back to sequential: %s", e)
+            logger.warning("ProcessPoolExecutor failed, falling back to sequential: %s", e)
 
     # Sequential fallback
     results = []

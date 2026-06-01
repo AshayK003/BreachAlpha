@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.3.0] — 2026-06-01
+
+### Added
+- **server**: `_run_analysis_pipeline()` — stages 4-8 wrapped in `asyncio.to_thread()` to avoid blocking the event loop
+- **server**: Parallel market data fetch via `ThreadPoolExecutor(8)` — all unique benchmarks fetched concurrently
+- **server**: Batch prediction — single `model.predict()` + `predict_proba()` call instead of per-row loop
+- **data_sources**: Parallel fallback in `DataFetcher.fetch_batch()` — `ThreadPoolExecutor(8)` replaces sequential loop
+- **preprocessor**: Parallel ticker resolution — `ThreadPoolExecutor(8)` for datasets > 5 rows
+- **feature_engine**: `ProcessPoolExecutor` replaces `ThreadPoolExecutor` — true parallelism on CPU-bound work (bypasses GIL)
+- **docs**: Design spec for pipeline performance optimization
+
+### Changed
+- Analysis pipeline runs in a dedicated thread, keeping the FastAPI event loop free
+- Feature batch computation falls back to sequential on pickling errors
+- Batch prediction falls back to per-row prediction on failure
+- Ticker resolution uses sequential path for small datasets (≤5 rows) to avoid thread overhead
+
 ## [0.2.0] — 2026-06-01
 
 ### Added

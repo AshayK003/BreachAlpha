@@ -100,7 +100,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
 
   return (
     <div className="space-y-6">
-      <Card className="bg-card border border-border">
+      <Card className="terminal-card corner-accent fade-in stagger-1">
         <CardHeader className="flex flex-row items-center justify-between pb-4">
           <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2 font-sans">
             <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +112,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
             variant="ghost"
             size="sm"
             onClick={() => setShowAdvanced(!showAdvanced)}
-            className="text-xs text-muted-foreground hover:text-foreground"
+            className="text-xs text-secondary-foreground hover:text-foreground"
           >
             {showAdvanced ? 'Hide' : 'Advanced'}
           </Button>
@@ -127,10 +127,10 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                 <button
                   key={p.name}
                   onClick={() => applyPreset(p)}
-                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-left hover:border-cyan-500/40 transition-colors"
+                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-left hover:border-cyan-500/40 transition-all duration-200 hover:bg-surface-raised"
                 >
                   <div className="text-foreground font-medium capitalize">{p.name}</div>
-                  <div className="text-muted-foreground mt-0.5">{p.description}</div>
+                  <div className="text-secondary-foreground mt-0.5">{p.description}</div>
                 </button>
               ))}
             </div>
@@ -180,7 +180,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
 
           {showAdvanced && (
             <div className="space-y-3 pt-4 mt-4 border-t border-border">
-              <h4 className="text-xs font-semibold text-muted-foreground">Event Windows</h4>
+              <h4 className="text-xs font-semibold text-dim">Event Windows</h4>
               <div className="grid grid-cols-2 gap-3">
                 {EVENT_WINDOWS.map(({ label, key, suffix }) => (
                   <div key={key}>
@@ -194,7 +194,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                         onChange={(e) => setConfig({ ...config, [key]: parseInt(e.target.value) || 0 })}
                         className="pr-10"
                       />
-                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-muted-foreground">
+                      <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[0.65rem] text-dim">
                         {suffix}
                       </span>
                     </div>
@@ -202,7 +202,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold text-muted-foreground pt-1">CAR Windows</h4>
+              <h4 className="text-xs font-semibold text-dim pt-1">CAR Windows</h4>
               <div className="grid grid-cols-4 gap-2">
                 {CAR_WINDOWS.map(({ label, key }) => (
                   <div key={key}>
@@ -218,7 +218,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                 ))}
               </div>
 
-              <h4 className="text-xs font-semibold text-muted-foreground pt-1">
+              <h4 className="text-xs font-semibold text-dim pt-1">
                 Severity Thresholds
               </h4>
               <div className="grid grid-cols-3 gap-3">
@@ -241,7 +241,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
         </CardContent>
       </Card>
 
-      <Card className="bg-card border border-border">
+      <Card className="terminal-card corner-accent fade-in stagger-2">
         <CardHeader>
           <CardTitle className="text-sm font-semibold text-foreground mb-4 flex items-center gap-2 font-sans">
             <svg className="w-4 h-4 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -260,11 +260,11 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                   className="flex items-center justify-between bg-surface rounded-lg px-3 py-2 border border-border"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className={cn('status-dot w-2 h-2 rounded-full', info.available ? 'bg-emerald-400' : 'bg-muted-foreground/50')} />
+                    <div className={cn('status-dot w-2 h-2 rounded-full', info.available ? 'bg-emerald-400' : 'bg-dim/50')} />
                     <span className="text-xs text-foreground font-medium capitalize">
                       {name.replace(/_/g, ' ')}
                     </span>
-                    <span className="text-[0.65rem] text-muted-foreground">
+                    <span className="text-[0.65rem] text-secondary-foreground">
                       priority {info.priority + 1}
                     </span>
                   </div>
@@ -308,8 +308,8 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                   setDataSourceConfig({ ...dataSourceConfig, alpha_vantage_key: e.target.value })
                 }
               />
-              <p className="text-[0.65rem] text-muted-foreground mt-1">
-                Free at <span className="text-cyan-400">alphavantage.co</span> (25 calls/day)
+              <p className="text-[0.65rem] text-secondary-foreground mt-1">
+                Free at <span className="text-cyan">alphavantage.co</span> (25 calls/day)
               </p>
             </div>
             <label className="flex items-center gap-2 cursor-pointer">
@@ -317,7 +317,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                 checked={dataSourceConfig.enable_fallback}
                 onCheckedChange={(v) => setDataSourceConfig({ ...dataSourceConfig, enable_fallback: v })}
               />
-              <span className="text-xs text-muted-foreground">Enable automatic fallback</span>
+              <span className="text-xs text-secondary-foreground">Enable automatic fallback</span>
             </label>
             <div className="flex items-center gap-3">
               <Button onClick={saveSourceConfig} className="flex-1">
@@ -332,7 +332,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
           </div>
 
           <div className="pt-4 mt-4 border-t border-border">
-            <h4 className="text-xs font-semibold text-muted-foreground mb-3">Test a Source</h4>
+            <h4 className="text-xs font-semibold text-dim mb-3">Test a Source</h4>
             <Input
               type="text"
               placeholder="Ticker (e.g., MSFT, TCS.NS)"
@@ -346,7 +346,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
                   key={src}
                   onClick={() => testSource(src)}
                   className={cn(
-                    'bg-surface border border-border rounded-lg px-3 py-2 text-xs text-foreground hover:border-cyan-500/40 transition-colors capitalize',
+                    'bg-surface border border-border rounded-lg px-3 py-2 text-xs text-foreground hover:border-cyan-500/40 transition-all duration-200 capitalize',
                     testResult?.source === src &&
                       (testResult.success ? 'border-emerald-500/40' : 'border-red-500/40')
                   )}
@@ -359,7 +359,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
               <div
                 role="alert"
                 className={cn(
-                  'mt-3 p-3 rounded-lg text-xs',
+                  'mt-3 p-3 rounded-lg text-xs fade-in',
                   testResult.success
                     ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400'
                     : 'bg-red-500/10 border border-red-500/20 text-red-400'
