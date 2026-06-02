@@ -65,15 +65,33 @@ export default function App() {
   const handleScore = useCallback(async (params) => {
     setLoading(true); setError(null); setScore(null)
     try {
-      const res = await fetch(`${API}/score`, {
+      const res = await fetch(`${API}/score/config`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(params),
+        body: JSON.stringify({
+          req: params,
+          config: {
+            estimation_window: analysisConfig.estimation_window,
+            pre_event_window: analysisConfig.pre_event_window,
+            post_event_window: analysisConfig.post_event_window,
+            recovery_max_days: analysisConfig.recovery_max_days,
+            threshold_critical: analysisConfig.threshold_critical,
+            threshold_high: analysisConfig.threshold_high,
+            threshold_medium: analysisConfig.threshold_medium,
+            car_short_start: analysisConfig.car_short_start,
+            car_short_end: analysisConfig.car_short_end,
+            car_long_start: analysisConfig.car_long_start,
+            car_long_end: analysisConfig.car_long_end,
+            benchmark: analysisConfig.benchmark,
+            start_date: analysisConfig.start_date,
+            min_records: analysisConfig.min_records,
+          },
+        }),
       })
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail) }
       setScore(await res.json())
     } catch (e) { setError(e.message) }
     setLoading(false)
-  }, [])
+  }, [analysisConfig])
 
   const handleUpload = useCallback(async (file) => {
     setLoading(true); setError(null); setUploadData(null)

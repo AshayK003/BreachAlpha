@@ -52,7 +52,8 @@ class TestTrain:
         response = client.post("/api/train", json={
             "data_path": "/nonexistent/file.csv",
         })
-        assert response.status_code in (403, 404)  # 403=path outside allowed dirs, 404=file not found
+        # 503=admin endpoint disabled (no key set), 403=path outside allowed dirs, 404=file not found
+        assert response.status_code in (503, 403, 404)
 
 
 class TestUpload:

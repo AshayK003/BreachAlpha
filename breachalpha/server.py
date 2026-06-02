@@ -7,6 +7,7 @@ Run with:
 from __future__ import annotations
 
 import asyncio
+import hmac
 import logging
 import os
 import re
@@ -87,9 +88,15 @@ class AdminAuthMiddleware(BaseHTTPMiddleware):
             or path in self.ADMIN_EXACT
             or (path == "/api/cache" and request.method == "DELETE")
         )
-        if is_admin and _ADMIN_KEY:
+        if is_admin:
+            if not _ADMIN_KEY:
+                from starlette.responses import JSONResponse
+                return JSONResponse(
+                    status_code=503,
+                    content={"detail": "Admin endpoints disabled. Set BREACHALPHA_ADMIN_KEY environment variable."},
+                )
             key = request.headers.get("X-Admin-Key", "")
-            if key != _ADMIN_KEY:
+            if not hmac.compare_digest(key, _ADMIN_KEY):
                 from starlette.responses import JSONResponse
                 return JSONResponse(
                     status_code=401,
