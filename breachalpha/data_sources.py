@@ -38,16 +38,8 @@ def _get_browser_session():
 
     curl_cffi bypasses TLS fingerprinting blocks that regular requests cannot.
     """
-    try:
-        from curl_cffi import requests as curl_requests
-        session = curl_requests.Session(impersonate="chrome")
-        return session, True
-    except ImportError:
-        session = requests.Session()
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
-        })
-        return session, False
+    from .core.http import get_browser_session
+    return get_browser_session()
 
 
 # ── Data Source Interface ───────────────────────────────────────────────

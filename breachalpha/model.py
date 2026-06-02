@@ -14,28 +14,11 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 
 from .feature_engine import classify_severity
+from .core.constants import FEATURE_COLS, SEVERITY_LABELS, SEVERITY_MAP, RISK_WEIGHTS
 
 logger = logging.getLogger(__name__)
 
 MODEL_DIR = Path(__file__).parent.parent / "models"
-
-# Feature columns used by the model (excludes metadata)
-FEATURE_COLS = [
-    "abnormal_return_day0",
-    "abnormal_return_day1",
-    "abnormal_return_day5",
-    "abnormal_return_day30",
-    "car_minus1_plus1",
-    "car_minus5_plus30",
-    "volatility_spike",
-    "volume_change",
-    "time_to_recovery",
-    "pwn_count",
-]
-
-# Severity labels
-SEVERITY_LABELS = ["low", "medium", "high", "critical"]
-SEVERITY_MAP = {label: idx for idx, label in enumerate(SEVERITY_LABELS)}
 
 
 def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
@@ -191,8 +174,7 @@ def predict_severity(model: xgb.XGBClassifier, features: pd.DataFrame) -> dict:
     probabilities = {label: float(proba) for label, proba in zip(SEVERITY_LABELS, probas)}
 
     # Risk score: weighted sum (0-100)
-    weights = {"low": 10, "medium": 35, "high": 65, "critical": 95}
-    risk_score = sum(probabilities[label] * weights[label] for label in SEVERITY_LABELS)
+    risk_score = sum(probabilities[label] * RISK_WEIGHTS[label] for label in SEVERITY_LABELS)
 
     return {
         "prediction": prediction,

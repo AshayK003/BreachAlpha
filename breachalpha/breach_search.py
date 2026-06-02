@@ -117,16 +117,9 @@ def _resolve_company_name(input_str: str) -> str:
 
 def _get_browser_session():
     """Get curl_cffi session with browser impersonation."""
-    try:
-        from curl_cffi import requests as curl_requests
-        return curl_requests.Session(impersonate="chrome")
-    except ImportError:
-        import requests
-        session = requests.Session()
-        session.headers.update({
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        })
-        return session
+    from .core.http import get_browser_session
+    session, _ = get_browser_session()
+    return session
 
 
 @dataclass

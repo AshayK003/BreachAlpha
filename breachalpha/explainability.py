@@ -45,7 +45,8 @@ BENCHMARK_NAMES = {
     "000001.SS": "SSE Composite",
     "399001.SZ": "SZSE Component",
 }
-from .model import SEVERITY_LABELS, predict_severity
+from .core.constants import SEVERITY_LABELS, RISK_WEIGHTS
+from .model import predict_severity
 
 
 @dataclass
@@ -209,7 +210,7 @@ def explain_severity_classification(car: float) -> CalculationStep:
 
 def explain_risk_score(probabilities: dict[str, float]) -> CalculationStep:
     """Explain the risk score calculation."""
-    weights = {"low": 10, "medium": 35, "high": 65, "critical": 95}
+    weights = RISK_WEIGHTS
     score = sum(probabilities.get(label, 0) * weights[label] for label in SEVERITY_LABELS)
 
     breakdown = {label: f"{probabilities.get(label, 0)*100:.1f}% × {weights[label]} = {probabilities.get(label, 0)*weights[label]:.1f}"
