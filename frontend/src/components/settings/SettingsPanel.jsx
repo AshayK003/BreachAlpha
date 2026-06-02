@@ -4,7 +4,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
 import { cn } from '@/lib/utils'
 
 const API = '/api'
@@ -61,7 +60,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
       const res = await fetch(`${API}/data-sources`)
       if (!res.ok) return
       setSourceStatus(await res.json())
-    } catch {}
+    } catch (e) { console.error('Failed to load source status:', e) }
   }
 
   const applyPreset = (preset) => setConfig(preset.config)
@@ -95,7 +94,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
       setSourceStatus(await res.json())
       setSaveFeedback('Saved!')
       setTimeout(() => setSaveFeedback(''), 2500)
-    } catch {}
+    } catch (e) { console.error('Failed to save source config:', e) }
   }
 
   return (

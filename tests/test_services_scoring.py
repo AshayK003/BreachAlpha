@@ -6,6 +6,7 @@ from breachalpha.services.scoring import (
     validate_ticker,
     resolve_company_name_from_ticker,
 )
+from breachalpha.core.exceptions import InvalidTickerError
 
 
 class TestValidateTicker:
@@ -22,15 +23,15 @@ class TestValidateTicker:
         assert validate_ticker("  MSFT  ") == "MSFT"
 
     def test_invalid_characters(self):
-        with pytest.raises(ValueError, match="Invalid ticker"):
+        with pytest.raises(InvalidTickerError, match="Invalid ticker"):
             validate_ticker("MSFT!")
 
     def test_empty_string(self):
-        with pytest.raises(ValueError, match="Invalid ticker"):
+        with pytest.raises(InvalidTickerError, match="Invalid ticker"):
             validate_ticker("")
 
     def test_too_long(self):
-        with pytest.raises(ValueError, match="Invalid ticker"):
+        with pytest.raises(InvalidTickerError, match="Invalid ticker"):
             validate_ticker("A" * 20)
 
     def test_dot_suffix_valid(self):

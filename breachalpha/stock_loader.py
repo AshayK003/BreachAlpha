@@ -16,7 +16,7 @@ from typing import Optional
 
 import pandas as pd
 
-from .data_sources import DataFetcher, FetcherConfig, CACHE_DIR, get_fetcher
+from .data_sources import DataFetcher, CACHE_DIR, get_fetcher
 
 logger = logging.getLogger(__name__)
 
@@ -76,47 +76,10 @@ def fetch_market_data(
     return fetcher.fetch_market(benchmark, start, end)
 
 
-def get_price_on_date(df: pd.DataFrame, date: pd.Timestamp, tolerance_days: int = 5) -> Optional[float]:
-    """Get closing price on or nearest to a given date."""
-    if df.empty:
-        return None
-
-    date = pd.Timestamp(date)
-    tolerance = pd.Timedelta(days=tolerance_days)
-
-    if date in df.index:
-        return float(df.loc[date, "Close"])
-
-    mask = (df.index >= date - tolerance) & (df.index <= date + tolerance)
-    nearby = df.loc[mask]
-    if not nearby.empty:
-        closest_idx = nearby.index[(nearby.index - date).abs().argmin()]
-        return float(nearby.loc[closest_idx, "Close"])
-
-    return None
-
-
-def get_trading_days_around(
-    df: pd.DataFrame,
-    center_date: pd.Timestamp,
-    window_before: int = 30,
-    window_after: int = 60,
-) -> pd.DataFrame:
-    """Get trading days within a window around a center date."""
-    if df.empty:
-        return df
-
-    center = pd.Timestamp(center_date)
-    idx = df.index.get_indexer([center], method="nearest")[0]
-    start_idx = max(0, idx - window_before)
-    end_idx = min(len(df), idx + window_after + 1)
-    return df.iloc[start_idx:end_idx]
-
-
 def clear_cache(older_than_days: Optional[int] = None) -> int:
     """Clear cached stock data. Returns number of files removed."""
     fetcher = _get_fetcher()
-    hours = older_than_days * 24 if older_than_days else None
+    hours = older_than_days * 24 if older_than_days is not None else None
     return fetcher.clear_cache(hours)
 
 

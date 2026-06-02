@@ -18,15 +18,6 @@ logger = logging.getLogger(__name__)
 # Indian stock suffixes to try
 INDIAN_SUFFIXES = [".NS", ".BO", ".NSE", ".BSE"]
 
-# Known Indian exchanges for suffix guessing
-INDIAN_EXCHANGES = {
-    "NSE": ".NS",
-    "BSE": ".BO",
-    "NSE India": ".NS",
-    "Bombay": ".BO",
-    "National Stock Exchange": ".NS",
-}
-
 
 def _get_browser_session():
     """Get curl_cffi session with browser impersonation."""

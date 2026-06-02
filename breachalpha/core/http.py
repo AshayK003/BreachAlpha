@@ -58,12 +58,25 @@ def validate_url(url: str) -> str:
     if not hostname:
         raise SSRFError(f"Invalid URL: no hostname in '{url}'")
 
-    # Allow localhost only for LM Studio (127.0.0.1:1234 / 192.168.56.1:1234)
-    # All other internal IPs are blocked
+    # Allow the configured LLM URL, but validate it itself isn't targeting a blocked network.
+    # Prevents abuse where BREACHALPHA_LLM_URL points to e.g. 8.8.8.8 and all requests to it bypass SSRF.
     llm_url = _get_llm_base_url()
     if llm_url:
         llm_parsed = urlparse(llm_url)
         if hostname == llm_parsed.hostname:
+            # Validate LLM host isn't in a blocked range (catches misconfigured env)
+            try:
+                llm_resolved = socket.getaddrinfo(llm_parsed.hostname, None, socket.AF_UNSPEC)
+                for _, _, _, _, sockaddr in llm_resolved:
+                    llm_ip = ipaddress.ip_address(sockaddr[0])
+                    for network in _BLOCKED_NETWORKS:
+                        if llm_ip in network:
+                            raise SSRFError(
+                                f"LLM URL '{llm_url}' resolves to blocked network {llm_ip} ({network}). "
+                                "Configure a valid LLM URL."
+                            )
+            except socket.gaierror:
+                raise SSRFError(f"LLM hostname '{llm_parsed.hostname}' cannot be resolved.")
             return url
 
     # Resolve hostname to IP and check against blocked ranges
@@ -78,9 +91,10 @@ def validate_url(url: str) -> str:
                         f"(in {network}). Requests to internal networks are not allowed."
                     )
     except socket.gaierror:
-        # DNS resolution failed — let the request proceed and fail naturally
-        # (Don't block on DNS failure as it may be transient)
-        pass
+        raise SSRFError(
+            f"DNS resolution failed for '{hostname}' — cannot verify safety. "
+            "Requests to unresolvable hosts are blocked."
+        )
 
     return url
 

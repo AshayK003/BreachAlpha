@@ -20,7 +20,7 @@ from ..services.scoring import (
     resolve_company_name_from_ticker,
     score_company as score_company_svc,
 )
-from ..core.exceptions import TickerResolutionError, InvalidTickerError, NoStockDataError, InsufficientDataError
+from ..core.exceptions import TickerResolutionError, NoStockDataError, InsufficientDataError
 
 
 def create_score_routes(limiter) -> APIRouter:

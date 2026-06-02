@@ -197,14 +197,6 @@ def load_overrides() -> dict[str, str]:
     return {}
 
 
-def save_overrides(overrides: dict[str, str]) -> None:
-    """Save ticker overrides to JSON file."""
-    OVERRIDES_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with open(OVERRIDES_PATH, "w") as f:
-        json.dump(overrides, f, indent=2)
-    logger.info("Saved %d ticker overrides to %s", len(overrides), OVERRIDES_PATH.name)
-
-
 def resolve_ticker(company_name: str, overrides: Optional[dict[str, str]] = None) -> Optional[str]:
     """Resolve a company name to a stock ticker symbol.
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, HTTPException, Request
 
 from ..schemas import (
     LLMAnalysisRequest, LLMRiskRequest, LLMQuestionRequest,
@@ -78,6 +78,8 @@ def create_llm_routes(limiter) -> APIRouter:
             raise HTTPException(status_code=400, detail="Context too long (max 10000 characters).")
         if check_prompt_injection(req.question):
             raise HTTPException(status_code=400, detail="Your question contains patterns that may indicate prompt injection. Please rephrase.")
+        if req.context and check_prompt_injection(req.context):
+            raise HTTPException(status_code=400, detail="Context contains patterns that may indicate prompt injection.")
 
         config = LLMConfig()
         result = await asyncio.to_thread(answer_breach_question,

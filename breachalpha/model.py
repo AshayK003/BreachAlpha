@@ -135,6 +135,10 @@ def save_model(model: xgb.XGBClassifier, metrics: dict, name: str = "breachalpha
         json.dump(metrics, f, indent=2)
 
     logger.info("Saved model to %s", model_path)
+
+    # Invalidate the cached model so subsequent loads pick up the new one
+    load_model.cache_clear()
+
     return model_path
 
 

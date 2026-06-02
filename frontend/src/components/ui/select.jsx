@@ -64,4 +64,4 @@ const SelectItem = React.forwardRef(({ className, children, ...props }, ref) => 
 ))
 SelectItem.displayName = SelectPrimitive.Item.displayName
 
-export { Select, SelectGroup, SelectValue, SelectTrigger, SelectContent, SelectItem }
+export { Select, SelectValue, SelectTrigger, SelectContent, SelectItem }

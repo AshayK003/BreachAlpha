@@ -98,7 +98,6 @@ class AdminAuthMiddleware(BaseHTTPMiddleware):
         is_admin = (
             any(path.startswith(p) for p in self.ADMIN_PREFIXES)
             or path in self.ADMIN_EXACT
-            or (path == "/api/cache" and request.method == "DELETE")
         )
         if is_admin:
             if not _ADMIN_KEY:

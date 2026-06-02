@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Header } from '@/components/layout/Header'
 import { TabBar } from '@/components/layout/TabBar'
 import { Footer } from '@/components/layout/Footer'
@@ -44,8 +44,18 @@ export default function App() {
   })
   const [presets, setPresets] = useState([])
 
+  const abortRef = useRef(null)
+
   const loadPresets = useCallback(async () => {
-    try { setPresets(await (await fetch(`${API}/config/presets`)).json()) } catch {}
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+    try {
+      const res = await fetch(`${API}/config/presets`, { signal: controller.signal })
+      setPresets(await res.json())
+    } catch (e) {
+      if (e.name !== 'AbortError') console.error('Failed to load presets:', e)
+    }
   }, [])
 
   useEffect(() => {
@@ -54,19 +64,28 @@ export default function App() {
   }, [])
 
   const loadDemos = useCallback(async () => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setDemosLoading(true)
     try {
-      const res = await fetch(`${API}/demo`)
+      const res = await fetch(`${API}/demo`, { signal: controller.signal })
       setDemos(await res.json())
-    } catch { setError('Failed to load demo data. Is the backend running?') }
+    } catch (e) {
+      if (e.name !== 'AbortError') setError('Failed to load demo data. Is the backend running?')
+    }
     setDemosLoading(false)
   }, [])
 
   const handleScore = useCallback(async (params) => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setLoading(true); setError(null); setScore(null)
     try {
       const res = await fetch(`${API}/score/config`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           req: params,
           config: {
@@ -94,40 +113,56 @@ export default function App() {
   }, [analysisConfig])
 
   const handleUpload = useCallback(async (file) => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setLoading(true); setError(null); setUploadData(null)
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch(`${API}/upload`, { method: 'POST', body: form })
+      const res = await fetch(`${API}/upload`, { method: 'POST', body: form, signal: controller.signal })
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail) }
       setUploadData(await res.json())
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      if (e.name !== 'AbortError') setError(e.message)
+    }
     setLoading(false)
   }, [])
 
   const handleAnalyze = useCallback(async (file) => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setLoading(true); setError(null); setBatchData(null)
     try {
       const form = new FormData()
       form.append('file', file)
-      const res = await fetch(`${API}/upload/analyze`, { method: 'POST', body: form })
+      const res = await fetch(`${API}/upload/analyze`, { method: 'POST', body: form, signal: controller.signal })
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail) }
       setBatchData(await res.json())
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      if (e.name !== 'AbortError') setError(e.message)
+    }
     setLoading(false)
   }, [])
 
   const handleAutoExplain = useCallback(async (ticker) => {
+    if (abortRef.current) abortRef.current.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
     setExplainLoading(true); setError(null); setExplainData(null)
     try {
       const res = await fetch(`${API}/explain/auto`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({ company: ticker }),
       })
       if (!res.ok) { const err = await res.json(); throw new Error(err.detail) }
       setExplainData(await res.json())
       setActiveTab('explain')
-    } catch (e) { setError(e.message) }
+    } catch (e) {
+      if (e.name !== 'AbortError') setError(e.message)
+    }
     setExplainLoading(false)
   }, [])
 
@@ -141,7 +176,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background" role="application" aria-label="BreachAlpha cyber-financial risk quantifier">
-      <Header health={health} />
+      <Header />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7" role="main" aria-live="polite">
         <div className="text-center mb-7 fade-in">

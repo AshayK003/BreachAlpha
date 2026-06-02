@@ -7,7 +7,6 @@ calculation. Eliminates 8x duplicated model-loading blocks in server.py.
 from __future__ import annotations
 
 import logging
-from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -16,10 +15,6 @@ from ..core.constants import RISK_WEIGHTS, SEVERITY_LABELS
 from ..model import load_model, train_model, predict_severity
 
 logger = logging.getLogger(__name__)
-
-# Thread pool for parallel CPU-bound work (feature computation)
-_compute_pool = ThreadPoolExecutor(max_workers=4)
-
 
 def get_or_train_model():
     """Load the trained model, or train on synthetic data as fallback.
@@ -142,6 +137,10 @@ def run_analysis_pipeline(preprocess_result, start_date: str = "2010-01-01") -> 
     tickers = [str(t) for t in df["ticker"].dropna().unique() if t]
     stock_cache = fetch_stock_batch(tickers, start=start_date)
 
+    # Pre-fetch market data for unique benchmarks (avoids N+1 fetch calls)
+    unique_benchmarks = {detect_benchmark(t) for t in tickers}
+    market_cache = {bm: fetch_market_data(start=start_date, benchmark=bm) for bm in unique_benchmarks}
+
     model = get_or_train_model()
 
     # Build events, collect skipped rows
@@ -178,7 +177,7 @@ def run_analysis_pipeline(preprocess_result, start_date: str = "2010-01-01") -> 
             continue
 
         bm = detect_benchmark(ticker)
-        market_data = fetch_market_data(start=start_date, benchmark=bm)
+        market_data = market_cache[bm]
         events.append(BreachEvent(
             company_name=company, ticker=ticker,
             breach_date=pd.Timestamp(breach_date),

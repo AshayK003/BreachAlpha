@@ -8,21 +8,7 @@ import {
   Cell,
 } from 'recharts'
 
-export function FeaturesChart({ features, error }) {
-  if (error) {
-    return (
-      <div
-        className="h-48 flex flex-col items-center justify-center bg-surface rounded-lg border border-border"
-        role="alert"
-      >
-        <svg className="w-8 h-8 text-dim mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-        <p className="text-xs text-secondary-foreground">{error}</p>
-      </div>
-    )
-  }
-
+export function FeaturesChart({ features }) {
   if (!features || features.abnormal_return_day0 == null) {
     return (
       <div className="h-48 flex items-center justify-center bg-surface rounded-lg border border-border">

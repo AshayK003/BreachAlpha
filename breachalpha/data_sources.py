@@ -35,6 +35,24 @@ CACHE_DIR = Path(__file__).parent.parent / "data" / "stock_cache"
 CACHE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+def _parse_yahoo_chart(result: dict) -> pd.DataFrame:
+    """Extract OHLCV DataFrame from a Yahoo Finance chart API result object."""
+    timestamps = result.get("timestamp")
+    if not timestamps:
+        return pd.DataFrame()
+    q = result.get("indicators", {}).get("quote", [{}])
+    if not q:
+        return pd.DataFrame()
+    df = pd.DataFrame({
+        "Open": q[0].get("open", []),
+        "High": q[0].get("high", []),
+        "Low": q[0].get("low", []),
+        "Close": q[0].get("close", []),
+        "Volume": q[0].get("volume", []),
+    }, index=pd.to_datetime(timestamps, unit="s"))
+    return df.dropna()
+
+
 def _get_browser_session():
     """Get a curl_cffi session that impersonates Chrome browser.
 
@@ -150,23 +168,7 @@ class YFinanceSource(DataSource):
                     if not result:
                         break
 
-                    timestamps = result[0].get("timestamp")
-                    if not timestamps:
-                        break
-
-                    q = result[0].get("indicators", {}).get("quote", [{}])
-                    if not q:
-                        break
-
-                    df = pd.DataFrame({
-                        "Open": q[0].get("open", []),
-                        "High": q[0].get("high", []),
-                        "Low": q[0].get("low", []),
-                        "Close": q[0].get("close", []),
-                        "Volume": q[0].get("volume", []),
-                    }, index=pd.to_datetime(timestamps, unit="s"))
-
-                    df = df.dropna()
+                    df = _parse_yahoo_chart(result[0])
                     if len(df) > 0:
                         return df
 
@@ -217,22 +219,10 @@ class YFinanceSource(DataSource):
                 if chart.get("result"):
                     for result in chart["result"]:
                         symbol = result.get("meta", {}).get("symbol", "")
-                        timestamps = result.get("timestamp")
-                        if not symbol or not timestamps:
+                        if not symbol:
                             continue
 
-                        q = result.get("indicators", {}).get("quote", [{}])
-                        if not q:
-                            continue
-
-                        df = pd.DataFrame({
-                            "Open": q[0].get("open", []),
-                            "High": q[0].get("high", []),
-                            "Low": q[0].get("low", []),
-                            "Close": q[0].get("close", []),
-                            "Volume": q[0].get("volume", []),
-                        }, index=pd.to_datetime(timestamps, unit="s")).dropna()
-
+                        df = _parse_yahoo_chart(result)
                         if len(df) > 0:
                             results[symbol] = df
 
@@ -471,23 +461,7 @@ class YahooFinanceScrapeSource(DataSource):
                 if not result:
                     continue
 
-                timestamps = result[0].get("timestamp")
-                if not timestamps:
-                    continue
-
-                q = result[0].get("indicators", {}).get("quote", [{}])
-                if not q:
-                    continue
-
-                df = pd.DataFrame({
-                    "Open": q[0].get("open", []),
-                    "High": q[0].get("high", []),
-                    "Low": q[0].get("low", []),
-                    "Close": q[0].get("close", []),
-                    "Volume": q[0].get("volume", []),
-                }, index=pd.to_datetime(timestamps, unit="s"))
-
-                df = df.dropna()
+                df = _parse_yahoo_chart(result[0])
                 if len(df) > 0:
                     return df
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +12,6 @@ export function LLMAnalysisPanel({ batchData }) {
   const [question, setQuestion] = useState('')
   const [answer, setAnswer] = useState('')
   const [askLoading, setAskLoading] = useState(false)
-  const questionRef = useRef(null)
 
   useEffect(() => {
     fetch(`${API}/llm/status`)
@@ -142,7 +141,6 @@ export function LLMAnalysisPanel({ batchData }) {
           </h4>
           <div className="flex gap-2">
             <Input
-              ref={questionRef}
               type="text"
               value={question}
               onChange={(e) => setQuestion(e.target.value)}

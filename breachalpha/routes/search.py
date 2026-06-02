@@ -9,7 +9,6 @@ from fastapi import APIRouter, HTTPException, Request
 
 from ..ticker_resolver import resolve_ticker
 from ..schemas import SearchResponse, SearchResult, BreachSearchResponse, BreachIncidentResult
-from ..core.constants import TICKER_RE
 
 _search_cache: TTLCache = TTLCache(maxsize=1000, ttl=300)
 

@@ -86,6 +86,7 @@ export function BatchResults({ data }) {
     a.href = url
     a.download = 'breachalpha_results.csv'
     a.click()
+    URL.revokeObjectURL(url)
   }
 
   return (

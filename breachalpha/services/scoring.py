@@ -22,6 +22,9 @@ from .model import get_or_train_model, score_features
 logger = logging.getLogger(__name__)
 
 
+_TICKER_TO_NAME: dict[str, str] = {v.upper(): k for k, v in KNOWN_TICKERS.items() if v}
+
+
 from ..core.exceptions import (
     TickerResolutionError, InvalidTickerError, NoStockDataError,
     InsufficientDataError,
@@ -34,13 +37,12 @@ def validate_ticker(ticker: str) -> str:
     Returns the cleaned uppercase ticker.
 
     Raises:
-        ValueError: If ticker format is invalid.
+        InvalidTickerError: If ticker format is invalid.
     """
-    import re as _re
     from ..core.constants import TICKER_RE
     cleaned = ticker.strip().upper()
     if not TICKER_RE.match(cleaned):
-        raise ValueError(f"Invalid ticker format: '{ticker}'. Tickers must be 1-15 alphanumeric characters.")
+        raise InvalidTickerError(ticker)
     return cleaned
 
 
@@ -51,12 +53,11 @@ def resolve_company_name_from_ticker(ticker: str) -> str:
     ticker as fallback if no match is found.
     """
     try:
-        rev = {v.upper(): k for k, v in KNOWN_TICKERS.items() if v}
         bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", ticker.upper())
-        if ticker.upper() in rev:
-            return rev[ticker.upper()].title()
-        elif bare in rev:
-            return rev[bare].title()
+        if ticker.upper() in _TICKER_TO_NAME:
+            return _TICKER_TO_NAME[ticker.upper()].title()
+        elif bare in _TICKER_TO_NAME:
+            return _TICKER_TO_NAME[bare].title()
     except Exception:
         pass
     return ticker
@@ -124,10 +125,7 @@ async def score_company(
     if ticker is None:
         raise TickerResolutionError(company_name)
 
-    try:
-        ticker = validate_ticker(ticker)
-    except ValueError as e:
-        raise InvalidTickerError(company_name) from e
+    ticker = validate_ticker(ticker)
 
     stock_data, market_data, benchmark = await fetch_breach_data(ticker, start_date)
     if stock_data.empty:

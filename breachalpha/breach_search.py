@@ -10,9 +10,6 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Optional
-
-import pandas as pd
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +19,6 @@ def _resolve_company_name(input_str: str) -> str:
 
     Uses the reverse ticker map from ticker_resolver (single source of truth).
     """
-    import re
     from .ticker_resolver import KNOWN_TICKERS
 
     cleaned = input_str.strip().upper()
@@ -84,7 +80,6 @@ def search_breach_incidents(company: str, limit: int = 5) -> list[BreachIncident
     if company_name != company:
         queries.append(company)
     # Always also try just the bare company name (without exchange suffix)
-    import re
     bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", company.strip().upper())
     if bare not in queries and bare not in [q.upper() for q in queries]:
         queries.append(bare)
@@ -95,11 +90,7 @@ def search_breach_incidents(company: str, limit: int = 5) -> list[BreachIncident
         if len(incidents) >= limit:
             break
 
-    # Source 2: Search HIBP-like breach databases
-    hibp_results = _search_hibp(company_name, limit)
-    incidents.extend(hibp_results)
-
-    # Source 3: Search SEC filings for 8-K cybersecurity disclosures
+    # Source 2: Search SEC filings for 8-K cybersecurity disclosures
     sec_results = _search_sec_filings(company_name, limit)
     incidents.extend(sec_results)
 
@@ -116,23 +107,6 @@ def search_breach_incidents(company: str, limit: int = 5) -> list[BreachIncident
     unique.sort(key=lambda x: x.date, reverse=True)
 
     return unique[:limit]
-
-
-def _search_hibp(company: str, limit: int) -> list[BreachIncident]:
-    """Search HaveIBeenPwned for breach data."""
-    session = _get_browser_session()
-    results = []
-
-    try:
-        # HIBP has a public breach list page
-        url = "https://haveibeenpwned.com/unifiedsearch/{company}"
-        # Note: HIBP API requires API key, but we can scrape the public page
-        # For now, return empty - this is a placeholder
-        pass
-    except Exception as e:
-        logger.debug("HIBP search failed for %s: %s", company, e)
-
-    return results
 
 
 def _extract_date_from_text(text: str) -> str:
@@ -380,7 +354,7 @@ def _extract_records_from_text(text: str) -> int:
     for pattern, multiplier in patterns:
         match = re.search(pattern, text)
         if match:
-            num_str = match.group(1).replace(",", "").replace(".", "")
+            num_str = match.group(1).replace(",", "")
             try:
                 return int(num_str) * multiplier
             except ValueError:
