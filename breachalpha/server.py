@@ -13,6 +13,7 @@ import os
 import re
 import time
 
+import structlog
 import numpy as np
 import pandas as pd
 from cachetools import TTLCache
@@ -20,6 +21,9 @@ from fastapi import FastAPI, HTTPException, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
 
 from .schemas import (
     ScoreRequest, ExplainRequest, TrainRequest, AnalysisConfigRequest,
@@ -61,13 +65,37 @@ from .services.scoring import (
     score_company as score_company_svc,
 )
 
-logger = logging.getLogger(__name__)
+# Structured logging configuration
+structlog.configure(
+    processors=[
+        structlog.contextvars.merge_contextvars,
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso"),
+        structlog.processors.format_exc_info,
+        structlog.processors.JSONRenderer(),
+    ],
+    wrapper_class=structlog.make_filtering_bound_logger(logging.INFO),
+    context_class=dict,
+    logger_factory=structlog.PrintLoggerFactory(),
+    cache_logger_on_first_use=True,
+)
+
+log = structlog.get_logger(__name__)
 
 app = FastAPI(
     title="BreachAlpha API",
     description="Quantify the financial impact of cybersecurity incidents",
     version="0.1.0",
 )
+
+# Rate limiting: in-memory storage (single-server; use Redis for multi-instance)
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["120/minute"],
+    headers_enabled=False,
+)
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -149,7 +177,8 @@ def _validate_breach_search_query(q: str) -> str:
 
 
 @app.get("/api/health", response_model=HealthResponse)
-async def health_check():
+@limiter.exempt
+async def health_check(request: Request):
     """Health check endpoint."""
     model = load_model()
     return HealthResponse(
@@ -160,7 +189,8 @@ async def health_check():
 
 
 @app.post("/api/score", response_model=ScoreResponse)
-async def score_company(req: ScoreRequest):
+@limiter.limit("10/minute")
+async def score_company(request: Request, req: ScoreRequest):
     """Score a company for breach impact."""
     response, _ = await score_company_svc(
         company_name=req.company,
@@ -172,7 +202,8 @@ async def score_company(req: ScoreRequest):
 
 
 @app.post("/api/score/auto", response_model=AutoScoreResponse)
-async def score_auto(req: ScoreRequest):
+@limiter.limit("5/minute")
+async def score_auto(request: Request, req: ScoreRequest):
     """Search for real breach data and score using the most significant incident."""
     from .breach_search import search_breach_incidents
 
@@ -246,7 +277,8 @@ async def score_auto(req: ScoreRequest):
 
 
 @app.get("/api/demo", response_model=list[DemoCase])
-async def run_demo():
+@limiter.limit("30/minute")
+async def run_demo(request: Request):
     """Run demo with three famous breaches."""
     demo_cases = [
         DemoCase(
@@ -302,13 +334,14 @@ async def run_demo():
                 case.prediction = pred["prediction"]
                 case.confidence = pred["confidence"]
         except Exception as e:
-            logger.error("Demo failed for %s: %s", case.company, e)
+            log.error("demo_failed", company=case.company, error=str(e))
 
     return demo_cases
 
 
 @app.post("/api/train", response_model=TrainResponse)
-async def train_model_endpoint(req: TrainRequest):
+@limiter.limit("1/minute")
+async def train_model_endpoint(request: Request, req: TrainRequest):
     """Train the model on breach data."""
     from pathlib import Path
 
@@ -384,7 +417,8 @@ async def train_model_endpoint(req: TrainRequest):
 
 
 @app.post("/api/upload", response_model=UploadResponse)
-async def upload_dataset(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def upload_dataset(request: Request, file: UploadFile = File(...)):
     """Upload and preprocess a breach dataset (CSV, XLSX, Excel)."""
     suffix = validate_upload_extension(file.filename)
     tmp_path = None
@@ -405,14 +439,15 @@ async def upload_dataset(file: UploadFile = File(...)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Upload preprocessing failed: %s", e)
+        log.error("upload_preprocessing_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Preprocessing failed")
     finally:
         cleanup_upload(tmp_path)
 
 
 @app.post("/api/upload/analyze", response_model=BatchResponse)
-async def upload_and_analyze(file: UploadFile = File(...)):
+@limiter.limit("2/minute")
+async def upload_and_analyze(request: Request, file: UploadFile = File(...)):
     """Upload a dataset and analyze all breaches in it."""
     suffix = validate_upload_extension(file.filename)
     tmp_path = None
@@ -436,7 +471,8 @@ async def upload_and_analyze(file: UploadFile = File(...)):
 
 
 @app.post("/api/explain", response_model=ExplainResponse)
-async def explain_score(req: ExplainRequest):
+@limiter.limit("10/minute")
+async def explain_score(request: Request, req: ExplainRequest):
     """Generate a full explainability report for a breach analysis."""
     ticker = resolve_ticker(req.company)
     if ticker is None:
@@ -493,7 +529,8 @@ async def explain_score(req: ExplainRequest):
 
 
 @app.post("/api/explain/auto", response_model=ExplainResponse)
-async def explain_auto(req: ScoreRequest):
+@limiter.limit("5/minute")
+async def explain_auto(request: Request, req: ScoreRequest):
     """Auto-search breach data for a company/ticker and explain the most significant incident."""
     from .breach_search import search_breach_incidents
 
@@ -560,7 +597,8 @@ async def explain_auto(req: ScoreRequest):
 
 
 @app.get("/api/config/presets", response_model=list[ConfigPreset])
-async def get_config_presets():
+@limiter.exempt
+async def get_config_presets(request: Request):
     """Return predefined analysis configuration presets."""
     return [
         ConfigPreset(
@@ -602,21 +640,24 @@ async def get_config_presets():
 
 
 @app.get("/api/cache", response_model=CacheInfoResponse)
-async def get_cache_info_endpoint():
+@limiter.exempt
+async def get_cache_info_endpoint(request: Request):
     """Get info about cached stock data."""
     info = get_cache_info()
     return CacheInfoResponse(**info)
 
 
 @app.delete("/api/cache")
-async def clear_cache_endpoint(older_than_days: int = None):
+@limiter.exempt
+async def clear_cache_endpoint(request: Request, older_than_days: int = None):
     """Clear cached stock data."""
     count = clear_cache(older_than_days)
     return {"status": "ok", "cleared": count}
 
 
 @app.get("/api/data-sources", response_model=DataSourceConfigResponse)
-async def get_data_sources():
+@limiter.exempt
+async def get_data_sources(request: Request):
     """Get current data source configuration and status."""
     status = get_data_sources_status()
     sources = {name: DataSourceStatus(**info) for name, info in status.items()}
@@ -630,7 +671,8 @@ async def get_data_sources():
 
 
 @app.post("/api/data-sources/configure", response_model=DataSourceConfigResponse)
-async def configure_data_sources(req: DataSourceConfigRequest):
+@limiter.limit("10/minute")
+async def configure_data_sources(request: Request, req: DataSourceConfigRequest):
     """Configure data source preferences (thread-safe via app.state)."""
     # Store in app.state instead of os.environ (thread-safe)
     if req.alpha_vantage_key:
@@ -659,7 +701,8 @@ async def configure_data_sources(req: DataSourceConfigRequest):
 
 
 @app.get("/api/data-sources/test/{source_name}")
-async def test_data_source(source_name: str, ticker: str = "MSFT"):
+@limiter.limit("10/minute")
+async def test_data_source(request: Request, source_name: str, ticker: str = "MSFT"):
     """Test a specific data source with a ticker.
 
     Use source_name='auto' to test the full fallback chain.
@@ -753,7 +796,8 @@ async def test_data_source(source_name: str, ticker: str = "MSFT"):
 
 
 @app.get("/api/search")
-async def search_ticker(q: str = "", limit: int = 10):
+@limiter.limit("30/minute")
+async def search_ticker(request: Request, q: str = "", limit: int = 10):
     """Search for stock tickers — instant local match first, network fallback.
 
     Supports company names (e.g., "Reliance"), partial tickers (e.g., "VEDL"),
@@ -826,7 +870,8 @@ async def search_ticker(q: str = "", limit: int = 10):
 
 
 @app.get("/api/breach-search")
-async def search_breach(q: str = "", limit: int = 5):
+@limiter.limit("10/minute")
+async def search_breach(request: Request, q: str = "", limit: int = 5):
     """Search for breach incidents for a company from the internet.
 
     Finds breach dates, types, and affected records from news sources.
@@ -857,7 +902,8 @@ async def search_breach(q: str = "", limit: int = 5):
 
 
 @app.get("/api/llm/status")
-async def llm_status():
+@limiter.exempt
+async def llm_status(request: Request):
     """Check if LM Studio / LLM is available."""
     from .llm_integration import check_lm_studio, LLMConfig
     config = LLMConfig()
@@ -872,7 +918,8 @@ async def llm_status():
 
 
 @app.post("/api/llm/analyze-dataset")
-async def llm_analyze_dataset(req: LLMAnalysisRequest):
+@limiter.limit("5/minute")
+async def llm_analyze_dataset(request: Request, req: LLMAnalysisRequest):
     """Use LLM to analyze a dataset and generate insights."""
     from .llm_integration import analyze_breach_dataset, LLMConfig
 
@@ -896,7 +943,8 @@ async def llm_analyze_dataset(req: LLMAnalysisRequest):
 
 
 @app.post("/api/llm/risk-summary")
-async def llm_risk_summary(req: LLMRiskRequest):
+@limiter.limit("10/minute")
+async def llm_risk_summary(request: Request, req: LLMRiskRequest):
     """Generate a natural language risk summary for a company."""
     from .llm_integration import generate_risk_summary, LLMConfig
 
@@ -919,7 +967,8 @@ async def llm_risk_summary(req: LLMRiskRequest):
 
 
 @app.post("/api/llm/ask")
-async def llm_ask(req: LLMQuestionRequest):
+@limiter.limit("10/minute")
+async def llm_ask(request: Request, req: LLMQuestionRequest):
     """Ask a question about breach data using the LLM."""
     from .llm_integration import answer_breach_question, LLMConfig
 
@@ -940,7 +989,8 @@ async def llm_ask(req: LLMQuestionRequest):
 
 
 @app.post("/api/llm/enrich")
-async def llm_enrich_records(records: list[dict]):
+@limiter.limit("5/minute")
+async def llm_enrich_records(request: Request, records: list[dict]):
     """Enrich breach records with LLM-generated context."""
     from .llm_integration import enrich_breach_records, LLMConfig
 
@@ -957,7 +1007,8 @@ async def llm_enrich_records(records: list[dict]):
 
 
 @app.post("/api/score/config", response_model=ScoreResponse)
-async def score_with_config(req: ScoreRequest, config: AnalysisConfigRequest = None):
+@limiter.limit("10/minute")
+async def score_with_config(request: Request, req: ScoreRequest, config: AnalysisConfigRequest = None):
     """Score a company with custom analysis configuration."""
     if config is None:
         config = AnalysisConfigRequest()
@@ -1016,7 +1067,8 @@ async def score_with_config(req: ScoreRequest, config: AnalysisConfigRequest = N
 
 
 @app.post("/api/upload/config", response_model=UploadResponse)
-async def upload_with_config(file: UploadFile = File(...), config: UploadConfigRequest = None):
+@limiter.limit("5/minute")
+async def upload_with_config(request: Request, file: UploadFile = File(...), config: UploadConfigRequest = None):
     """Upload dataset with custom preprocessing configuration."""
     if config is None:
         config = UploadConfigRequest()
@@ -1046,14 +1098,15 @@ async def upload_with_config(file: UploadFile = File(...), config: UploadConfigR
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Upload preprocessing failed: %s", e)
+        log.error("upload_preprocessing_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Preprocessing failed")
     finally:
         cleanup_upload(tmp_path)
 
 
 @app.post("/api/upload/analyze/config", response_model=BatchResponse)
-async def upload_analyze_with_config(file: UploadFile = File(...), config: UploadConfigRequest = None):
+@limiter.limit("2/minute")
+async def upload_analyze_with_config(request: Request, file: UploadFile = File(...), config: UploadConfigRequest = None):
     """Upload and analyze with custom configuration."""
     if config is None:
         config = UploadConfigRequest()
@@ -1077,7 +1130,7 @@ async def upload_analyze_with_config(file: UploadFile = File(...), config: Uploa
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Upload preprocessing failed: %s", e)
+        log.error("upload_preprocessing_failed", error=str(e))
         raise HTTPException(status_code=500, detail="Preprocessing failed")
     finally:
         cleanup_upload(tmp_path)
