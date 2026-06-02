@@ -11,6 +11,10 @@ import {
 export function ExplainabilityPanel({ data }) {
   if (!data) return null
 
+  const steps = data.steps || []
+  const limitations = data.limitations || []
+  const featureContributions = data.feature_contributions || {}
+
   return (
     <div className="terminal-card corner-accent p-6 fade-in">
       <div className="flex items-center gap-2 mb-5">
@@ -32,7 +36,7 @@ export function ExplainabilityPanel({ data }) {
       </div>
 
       <div className="space-y-3">
-        {data.steps.map((step, i) => (
+        {steps.map((step, i) => (
           <div
             key={i}
             className="rounded-xl p-4 bg-surface border border-border hover:border-border-bright transition-all duration-200"
@@ -83,7 +87,7 @@ export function ExplainabilityPanel({ data }) {
           Feature Contributions
         </h4>
         <div className="space-y-2">
-          {Object.entries(data.feature_contributions)
+          {Object.entries(featureContributions)
             .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
             .map(([feat, val]) => (
               <div key={feat} className="flex items-center gap-3">
@@ -116,7 +120,7 @@ export function ExplainabilityPanel({ data }) {
           Limitations
         </h4>
         <ul className="space-y-1">
-          {data.limitations.map((lim, i) => (
+          {limitations.map((lim, i) => (
             <li key={i} className="text-xs text-secondary-foreground flex items-start gap-2">
               <span className="text-amber-400 mt-0.5 shrink-0">*</span>
               {lim}

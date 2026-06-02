@@ -22,6 +22,12 @@ from .model import get_or_train_model, score_features
 logger = logging.getLogger(__name__)
 
 
+from ..core.exceptions import (
+    TickerResolutionError, InvalidTickerError, NoStockDataError,
+    InsufficientDataError,
+)
+
+
 def validate_ticker(ticker: str) -> str:
     """Validate and normalize a ticker symbol.
 
@@ -114,21 +120,18 @@ async def score_company(
     Raises:
         HTTPException: On resolution failure, missing data, or insufficient data.
     """
-    from fastapi import HTTPException
-
     ticker = resolve_ticker(company_name)
     if ticker is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"Could not resolve ticker for '{company_name}'. Add mapping to data/ticker_overrides.json.",
-        )
+        raise TickerResolutionError(company_name)
 
     try:
         ticker = validate_ticker(ticker)
     except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        raise InvalidTickerError(company_name) from e
 
     stock_data, market_data, benchmark = await fetch_breach_data(ticker, start_date)
+    if stock_data.empty:
+        raise NoStockDataError(ticker)
 
     event = build_breach_event(
         company_name=company_name, ticker=ticker,
@@ -139,10 +142,7 @@ async def score_company(
 
     features = await asyncio.to_thread(compute_features, event, feature_config) if feature_config else await asyncio.to_thread(compute_features, event)
     if features is None:
-        raise HTTPException(
-            status_code=422,
-            detail=f"Insufficient data around breach date for {company_name}. Try a different date.",
-        )
+        raise InsufficientDataError(company_name, breach_date)
 
     model = get_or_train_model()
     features_df = pd.DataFrame([features.to_dict()])

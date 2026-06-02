@@ -243,3 +243,67 @@ class DataSourceConfigResponse(BaseModel):
     enable_fallback: bool
     cache_ttl_hours: int
     sources: dict[str, DataSourceStatus]
+
+
+# ── LLM Response Models ──────────────────────────────────────────────────
+
+
+class LLMStatusResponse(BaseModel):
+    available: bool
+    url: str
+    models: list[str]
+    default_model: str
+    error: Optional[str] = None
+
+
+class LLMAnalysisResponse(BaseModel):
+    analysis: str
+    model: str
+
+
+class LLMSummaryResponse(BaseModel):
+    summary: str
+    model: str
+
+
+class LLMAnswerResponse(BaseModel):
+    answer: str
+    model: str
+
+
+class LLMEnrichResponse(BaseModel):
+    enriched: list[dict]
+    count: int
+    model: str
+
+
+# ── Search Response Models ────────────────────────────────────────────────
+
+
+class SearchResult(BaseModel):
+    symbol: str
+    name: str
+    ticker_full: str
+    source: str
+
+
+class SearchResponse(BaseModel):
+    query: str
+    results: list[SearchResult]
+    count: int
+
+
+class BreachIncidentResult(BaseModel):
+    company: str
+    date: Optional[str] = None
+    breach_type: str
+    records_affected: int
+    source: str
+    description: str
+    confidence: float
+
+
+class BreachSearchResponse(BaseModel):
+    query: str
+    incidents: list[BreachIncidentResult]
+    count: int

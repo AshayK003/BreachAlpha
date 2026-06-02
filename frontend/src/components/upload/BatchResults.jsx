@@ -52,6 +52,14 @@ export function BatchResults({ data }) {
     </th>
   )
 
+  const escapeCSV = (val) => {
+    const str = String(val ?? '')
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`
+    }
+    return str
+  }
+
   const exportCSV = () => {
     const headers = [
       'Company', 'Ticker', 'Breach Date', 'Records', 'Risk Score', 'Prediction',
@@ -66,7 +74,7 @@ export function BatchResults({ data }) {
       r.probabilities ? (r.probabilities.critical * 100).toFixed(1) : '',
       r.confidence, r.status,
     ])
-    const csv = [headers, ...rows].map((r) => r.join(',')).join('\n')
+    const csv = [headers, ...rows].map((r) => r.map(escapeCSV).join(',')).join('\n')
     const blob = new Blob([csv], { type: 'text/csv' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')

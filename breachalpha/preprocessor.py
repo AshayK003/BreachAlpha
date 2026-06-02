@@ -44,7 +44,7 @@ class PreprocessConfig:
     """User-configurable preprocessing options."""
     column_mapping: dict[str, str] = field(default_factory=dict)
     date_format: Optional[str] = None
-    records_threshold: int = 100
+    records_threshold: int = 1000
     start_date: Optional[str] = None
     end_date: Optional[str] = None
     ticker_overrides: dict[str, str] = field(default_factory=dict)
@@ -110,11 +110,6 @@ def parse_dates_robust(series: pd.Series, preferred_format: str = None) -> pd.Se
                 return result
         except Exception:
             pass
-
-    try:
-        return pd.to_datetime(series, infer_datetime_format=True, errors="coerce")
-    except Exception:
-        pass
 
     for fmt in DATE_FORMATS:
         try:

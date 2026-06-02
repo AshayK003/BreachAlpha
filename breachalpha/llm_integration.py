@@ -91,8 +91,8 @@ def chat_completion(
     payload = {
         "model": config.model,
         "messages": messages,
-        "temperature": temperature or config.temperature,
-        "max_tokens": max_tokens or config.max_tokens,
+        "temperature": temperature if temperature is not None else config.temperature,
+        "max_tokens": max_tokens if max_tokens is not None else config.max_tokens,
         "stream": False,
     }
 

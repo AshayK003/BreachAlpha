@@ -11,8 +11,8 @@
 | Stock Fetch | curl_cffi (Chrome impersonation) | Bypass TLS fingerprint blocking |
 | Breach Search | Yahoo Finance News + DuckDuckGo HTML search | Internet breach lookup |
 | LLM | LM Studio (local, qwen3.5-9b) | Optional enrichment layer |
-| Frontend | React + Vite + Tailwind CSS + Chart.js | Web dashboard |
-| Testing | pytest + pytest-cov | 87+ tests |
+| Frontend | React + Vite + Tailwind CSS + Recharts | Web dashboard |
+| Testing | pytest + pytest-cov | 144 tests |
 
 ## Data Flow
 

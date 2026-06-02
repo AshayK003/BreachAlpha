@@ -342,7 +342,7 @@ class NSEIndiaSource(DataSource):
         return "nse_india"
 
     def supports_ticker(self, ticker: str) -> bool:
-        return ticker.endswith(".NS") or ticker.endswith(".BO") or re.match(r"^[A-Z]{2,10}$", ticker)
+        return ticker.endswith(".NS") or ticker.endswith(".BO")
 
     def _init_session(self):
         """Initialize session with NSE cookies."""

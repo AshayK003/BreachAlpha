@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from ..schemas import ScoreRequest, ScoreResponse, AutoScoreResponse, FeatureDetail, AnalysisConfigRequest
 from ..feature_engine import (
@@ -16,17 +16,11 @@ from ..ticker_resolver import resolve_ticker, detect_benchmark
 from ..stock_loader import fetch_stock_data, fetch_market_data
 from ..services.model import get_or_train_model, score_features
 from ..services.scoring import (
-    validate_ticker as _validate_ticker_svc,
+    validate_ticker,
     resolve_company_name_from_ticker,
     score_company as score_company_svc,
 )
-
-
-def _validate_ticker(ticker: str) -> str:
-    try:
-        return _validate_ticker_svc(ticker)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+from ..core.exceptions import TickerResolutionError, InvalidTickerError, NoStockDataError, InsufficientDataError
 
 
 def create_score_routes(limiter) -> APIRouter:
@@ -50,9 +44,9 @@ def create_score_routes(limiter) -> APIRouter:
 
         ticker = resolve_ticker(req.company)
         if ticker is None:
-            raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+            raise TickerResolutionError(req.company)
 
-        ticker = _validate_ticker(ticker)
+        ticker = validate_ticker(ticker)
         company_name = resolve_company_name_from_ticker(ticker)
 
         incidents = await asyncio.to_thread(search_breach_incidents, company_name, 5)
@@ -77,7 +71,7 @@ def create_score_routes(limiter) -> APIRouter:
             asyncio.to_thread(fetch_market_data, "2015-01-01", benchmark),
         )
         if stock_data.empty:
-            raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
+            raise NoStockDataError(ticker)
 
         event = BreachEvent(
             company_name=company_name, ticker=ticker,
@@ -89,10 +83,7 @@ def create_score_routes(limiter) -> APIRouter:
 
         features = await asyncio.to_thread(compute_features, event)
         if features is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Insufficient data around breach date {breach_date} for {company_name}",
-            )
+            raise InsufficientDataError(company_name, str(breach_date)[:10])
 
         model = get_or_train_model()
         features_df = pd.DataFrame([features.to_dict()])
@@ -121,9 +112,9 @@ def create_score_routes(limiter) -> APIRouter:
 
         ticker = resolve_ticker(req.company)
         if ticker is None:
-            raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+            raise TickerResolutionError(req.company)
 
-        ticker = _validate_ticker(ticker)
+        ticker = validate_ticker(ticker)
         benchmark = detect_benchmark(ticker)
 
         stock_data, market_data = await asyncio.gather(
@@ -131,7 +122,7 @@ def create_score_routes(limiter) -> APIRouter:
             asyncio.to_thread(fetch_market_data, config.start_date, benchmark),
         )
         if stock_data.empty:
-            raise HTTPException(status_code=404, detail=f"No stock data available for {ticker}")
+            raise NoStockDataError(ticker)
 
         feature_config = FeatureConfig(
             estimation_window=config.estimation_window,
@@ -157,7 +148,7 @@ def create_score_routes(limiter) -> APIRouter:
 
         features = await asyncio.to_thread(compute_features, event, feature_config)
         if features is None:
-            raise HTTPException(status_code=422, detail=f"Insufficient data for {req.company}")
+            raise InsufficientDataError(req.company)
 
         model = get_or_train_model()
         features_df = pd.DataFrame([features.to_dict()])

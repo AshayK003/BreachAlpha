@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.3] — 2026-06-02
+
+### Fixed
+- **crash**: `/api/cache` endpoint crashed with `NameError: CACHE_DIR` (missing import in `stock_loader.py`)
+- **crash**: `/api/cache` endpoint crashed with `TypeError` — response dict used `count` but `CacheInfoResponse` expected `cached_files`
+- **crash**: File upload date parsing crashed on pandas 3.0 — `infer_datetime_format` parameter removed in pandas 2.0
+- **crash**: LLM analysis panel crashed on successful response — `res.json()` called twice on same response body stream
+- **crash**: LLM ask panel crashed on successful response — same double `.json()` pattern
+- **crash**: ExplainabilityPanel crashed when `feature_contributions`, `steps`, or `limitations` was null/missing
+- **crash**: DemoCard crashed when `pwn_count` was null/undefined — division on null
+- **logic**: LLM `temperature=0.0` silently used default (0.3) — Python `or` treats `0.0` as falsy
+- **logic**: Demo endpoint blocked the entire event loop — `fetch_market_data()` and `fetch_stock_data()` called synchronously in async handler
+- **logic**: Data sources endpoint always reported `primary_source="yfinance"` regardless of actual configuration
+- **logic**: NSE India source claimed to support any 2-10 letter uppercase ticker (e.g., MSFT, AAPL), wasting time on invalid requests
+- **data**: CSV export broke on company names containing commas — no RFC 4180 escaping
+
+### Changed
+- Demo endpoint uses `asyncio.gather()` to fetch market data and model in parallel, then stock data per-case via `asyncio.to_thread()`
+- NSE India `supports_ticker()` now only matches `.NS` and `.BO` suffixes
+- Data sources endpoint reads actual active source from fetcher status
+
 ## [0.3.2] — 2026-06-02
 
 ### Fixed

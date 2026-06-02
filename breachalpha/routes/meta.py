@@ -59,12 +59,14 @@ def create_meta_routes(limiter) -> APIRouter:
             ),
         ]
 
-        market_data = fetch_market_data(start="2015-01-01")
-        model = get_or_train_model()
+        market_data, model = await asyncio.gather(
+            asyncio.to_thread(fetch_market_data, start="2015-01-01"),
+            asyncio.to_thread(get_or_train_model),
+        )
 
         for case in demo_cases:
             try:
-                stock_data = fetch_stock_data(case.ticker, start="2015-01-01")
+                stock_data = await asyncio.to_thread(fetch_stock_data, case.ticker, start="2015-01-01")
                 if stock_data.empty:
                     continue
 
@@ -143,10 +145,16 @@ def create_meta_routes(limiter) -> APIRouter:
     @router.get("/api/data-sources", response_model=DataSourceConfigResponse)
     @limiter.exempt
     async def get_data_sources(request: Request):
+        from ..data_sources import get_fetcher
         status = get_data_sources_status()
         sources = {name: DataSourceStatus(**info) for name, info in status.items()}
+        fetcher = get_fetcher()
+        active_source = next(
+            (name for name, info in status.items() if info.get("available")),
+            "yfinance",
+        )
         return DataSourceConfigResponse(
-            primary_source="yfinance",
+            primary_source=active_source,
             alpha_vantage_key_set=bool(os.environ.get("ALPHA_VANTAGE_API_KEY")),
             enable_fallback=True,
             cache_ttl_hours=24,

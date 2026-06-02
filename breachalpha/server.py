@@ -112,6 +112,32 @@ app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(AdminAuthMiddleware)
 
 
+# ── Domain Exception → HTTP Response Translation ──────────────────────────
+from .core.exceptions import (
+    BreachAlphaError, TickerResolutionError, InvalidTickerError,
+    NoStockDataError, InsufficientDataError, UnsupportedFileTypeError,
+    FileTooLargeError, LLMUnavailableError, TrainingError,
+)
+from fastapi.responses import JSONResponse
+
+_exception_status_map: dict[type, int] = {
+    TickerResolutionError: 404,
+    InvalidTickerError: 400,
+    NoStockDataError: 404,
+    InsufficientDataError: 422,
+    UnsupportedFileTypeError: 400,
+    FileTooLargeError: 413,
+    LLMUnavailableError: 503,
+    TrainingError: 422,
+}
+
+
+@app.exception_handler(BreachAlphaError)
+async def breach_alpha_error_handler(request: Request, exc: BreachAlphaError):
+    status = _exception_status_map.get(type(exc), 500)
+    return JSONResponse(status_code=status, content={"detail": str(exc)})
+
+
 # ── Register Routes ──────────────────────────────────────────────────────
 from .routes.meta import create_meta_routes
 from .routes.score import create_score_routes

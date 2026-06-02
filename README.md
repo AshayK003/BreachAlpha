@@ -6,7 +6,24 @@ Quantify the financial impact of cybersecurity incidents on publicly traded comp
 
 ```
 breachalpha/              # Python backend (FastAPI + XGBoost)
-├── server.py             # FastAPI REST API (20+ endpoints)
+├── server.py             # FastAPI REST API (app factory, middleware, SPA)
+├── schemas.py            # 21 Pydantic request/response models
+├── core/
+│   ├── constants.py      # RISK_WEIGHTS, FEATURE_COLS, SEVERITY_LABELS
+│   ├── exceptions.py     # Domain exceptions (decoupled from HTTPException)
+│   └── http.py           # Shared HTTP session (connection pooling)
+├── services/
+│   ├── file_upload.py    # Upload validation, temp file management
+│   ├── model.py          # Model loading, training, batch scoring
+│   └── scoring.py        # Ticker validation, breach search, scoring
+├── routes/
+│   ├── meta.py           # Health, demo, config presets, cache, data sources
+│   ├── score.py          # /api/score, /api/score/auto, /api/score/config
+│   ├── upload.py         # /api/upload, /api/upload/analyze
+│   ├── explain.py        # /api/explain, /api/explain/auto
+│   ├── search.py         # /api/search, /api/breach-search
+│   ├── llm.py            # /api/llm/* endpoints
+│   └── admin.py          # /api/train, /api/data-sources/configure
 ├── breach_search.py      # Internet breach search (Yahoo News + DuckDuckGo)
 ├── breach_loader.py      # Parse HIBP breach CSVs
 ├── ticker_resolver.py    # Company name → stock ticker (200+ mappings)
@@ -23,7 +40,16 @@ breachalpha/              # Python backend (FastAPI + XGBoost)
 frontend/                 # React + Vite + Tailwind CSS
 ├── src/
 │   ├── App.jsx           # Dashboard with 4 tabs + LLM analysis
-│   └── index.css         # Tailwind + custom styles
+│   ├── index.css         # Tailwind + custom styles
+│   └── components/
+│       ├── score/        # ScoreForm, RiskGauge, ProbabilityBar, FeaturesChart
+│       ├── upload/       # FileUpload, DatasetPreview, BatchResults
+│       ├── explain/      # ExplainabilityPanel
+│       ├── llm/          # LLMAnalysisPanel
+│       ├── demos/        # DemoCard
+│       ├── settings/     # SettingsPanel
+│       ├── layout/       # Header, TabBar, Footer
+│       └── ui/           # shadcn/ui primitives (Button, Card, Input, etc.)
 └── package.json
 ```
 
@@ -124,7 +150,7 @@ Response:
 ## Testing
 
 ```bash
-pytest                              # 87+ tests
+pytest                              # 144 tests
 pytest --cov=breachalpha --cov-report=term-missing
 pytest tests/test_server.py -v      # API tests only
 ```

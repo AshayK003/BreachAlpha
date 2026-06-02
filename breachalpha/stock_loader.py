@@ -16,7 +16,7 @@ from typing import Optional
 
 import pandas as pd
 
-from .data_sources import DataFetcher, FetcherConfig, get_fetcher
+from .data_sources import DataFetcher, FetcherConfig, CACHE_DIR, get_fetcher
 
 logger = logging.getLogger(__name__)
 
@@ -123,14 +123,14 @@ def clear_cache(older_than_days: Optional[int] = None) -> int:
 def get_cache_info() -> dict:
     """Return info about cached stock data."""
     if not CACHE_DIR.exists():
-        return {"count": 0, "total_size_kb": 0, "tickers": []}
+        return {"cached_files": 0, "total_size_kb": 0, "tickers": []}
 
     files = list(CACHE_DIR.glob("*.csv"))
     total_size = sum(f.stat().st_size for f in files)
     tickers = sorted(set(f.stem.split("_")[0] for f in files))
 
     return {
-        "count": len(files),
+        "cached_files": len(files),
         "total_size_kb": round(total_size / 1024, 1),
         "tickers": tickers,
     }

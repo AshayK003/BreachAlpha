@@ -9,6 +9,7 @@ from breachalpha.services.file_upload import (
     cleanup_upload,
 )
 from breachalpha.core.constants import ALLOWED_UPLOAD_EXTENSIONS
+from breachalpha.core.exceptions import UnsupportedFileTypeError
 
 
 class TestValidateUploadExtension:
@@ -25,28 +26,23 @@ class TestValidateUploadExtension:
         assert validate_upload_extension("data.tsv") == ".tsv"
 
     def test_json_rejected(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException, match="Unsupported file type"):
+        with pytest.raises(UnsupportedFileTypeError, match="Unsupported file type"):
             validate_upload_extension("data.json")
 
     def test_exe_rejected(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException, match="Unsupported file type"):
+        with pytest.raises(UnsupportedFileTypeError, match="Unsupported file type"):
             validate_upload_extension("malware.exe")
 
     def test_none_filename(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException, match="Unsupported file type"):
+        with pytest.raises(UnsupportedFileTypeError, match="Unsupported file type"):
             validate_upload_extension(None)
 
     def test_empty_string(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException, match="Unsupported file type"):
+        with pytest.raises(UnsupportedFileTypeError, match="Unsupported file type"):
             validate_upload_extension("")
 
     def test_no_extension(self):
-        from fastapi import HTTPException
-        with pytest.raises(HTTPException, match="Unsupported file type"):
+        with pytest.raises(UnsupportedFileTypeError, match="Unsupported file type"):
             validate_upload_extension("README")
 
     def test_case_insensitive(self):

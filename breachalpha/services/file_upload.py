@@ -12,9 +12,10 @@ import tempfile
 from pathlib import Path
 from typing import AsyncIterator
 
-from fastapi import HTTPException, UploadFile
+from fastapi import UploadFile
 
 from ..core.constants import ALLOWED_UPLOAD_EXTENSIONS, MAX_UPLOAD_BYTES
+from ..core.exceptions import UnsupportedFileTypeError, FileTooLargeError
 
 logger = logging.getLogger(__name__)
 
@@ -33,10 +34,7 @@ def validate_upload_extension(filename: str | None) -> str:
     """
     suffix = Path(filename or "").suffix.lower()
     if suffix not in ALLOWED_UPLOAD_EXTENSIONS:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Unsupported file type: {suffix}. Allowed: {', '.join(sorted(ALLOWED_UPLOAD_EXTENSIONS))}",
-        )
+        raise UnsupportedFileTypeError(suffix, ALLOWED_UPLOAD_EXTENSIONS)
     return suffix
 
 
@@ -63,10 +61,7 @@ async def save_upload(file: UploadFile, suffix: str) -> Path:
                 break
             total_size += len(chunk)
             if total_size > MAX_UPLOAD_BYTES:
-                raise HTTPException(
-                    status_code=413,
-                    detail=f"File too large. Maximum upload size is {MAX_UPLOAD_BYTES // (1024 * 1024)} MB.",
-                )
+                raise FileTooLargeError(MAX_UPLOAD_BYTES // (1024 * 1024))
             tmp.write(chunk)
     finally:
         tmp.close()

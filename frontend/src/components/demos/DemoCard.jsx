@@ -36,7 +36,7 @@ export function DemoCard({ demo, onClick, onExplain }) {
       <div className="flex items-center justify-between text-[0.6875rem]">
         <span className="text-secondary-foreground">{demo.breach_date}</span>
         <span className="text-secondary-foreground">
-          {(demo.pwn_count / 1_000_000).toFixed(0)}M records
+          {demo.pwn_count != null ? `${(demo.pwn_count / 1_000_000).toFixed(0)}M records` : 'N/A'}
         </span>
       </div>
       {demo.risk_score && (

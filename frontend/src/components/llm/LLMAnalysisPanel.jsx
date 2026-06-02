@@ -37,8 +37,9 @@ export function LLMAnalysisPanel({ batchData }) {
           analysis_results: JSON.stringify(batchData.results),
         }),
       })
-      if (!res.ok) throw new Error((await res.json()).detail)
-      setAnalysis((await res.json()).analysis)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'LLM analysis failed')
+      setAnalysis(data.analysis)
     } catch (e) {
       setAnalysis('Error: ' + e.message)
     }
@@ -61,8 +62,9 @@ export function LLMAnalysisPanel({ batchData }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question, context }),
       })
-      if (!res.ok) throw new Error((await res.json()).detail)
-      setAnswer((await res.json()).answer)
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.detail || 'LLM ask failed')
+      setAnswer(data.answer)
     } catch (e) {
       setAnswer('Error: ' + e.message)
     }

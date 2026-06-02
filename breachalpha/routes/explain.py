@@ -5,31 +5,23 @@ from __future__ import annotations
 import asyncio
 
 import pandas as pd
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request
 
 from ..schemas import (
     ExplainRequest, ExplainResponse, CalculationStepModel,
-    AutoScoreResponse, FeatureDetail,
 )
 from ..feature_engine import (
-    BreachEvent, compute_features, classify_severity,
-    AnalysisConfig as FeatureConfig,
+    BreachEvent, compute_features,
 )
 from ..ticker_resolver import resolve_ticker, detect_benchmark
 from ..stock_loader import fetch_stock_data, fetch_market_data
 from ..explainability import generate_explanation
 from ..services.model import get_or_train_model
 from ..services.scoring import (
-    validate_ticker as _validate_ticker_svc,
+    validate_ticker,
     resolve_company_name_from_ticker,
 )
-
-
-def _validate_ticker(ticker: str) -> str:
-    try:
-        return _validate_ticker_svc(ticker)
-    except ValueError as e:
-        raise HTTPException(status_code=400, detail=str(e))
+from ..core.exceptions import TickerResolutionError, NoStockDataError, InsufficientDataError
 
 
 def create_explain_routes(limiter) -> APIRouter:
@@ -40,9 +32,9 @@ def create_explain_routes(limiter) -> APIRouter:
     async def explain_score(request: Request, req: ExplainRequest):
         ticker = resolve_ticker(req.company)
         if ticker is None:
-            raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+            raise TickerResolutionError(req.company)
 
-        ticker = _validate_ticker(ticker)
+        ticker = validate_ticker(ticker)
         benchmark = detect_benchmark(ticker)
 
         stock_data, market_data = await asyncio.gather(
@@ -50,7 +42,7 @@ def create_explain_routes(limiter) -> APIRouter:
             asyncio.to_thread(fetch_market_data, "2015-01-01", benchmark),
         )
         if stock_data.empty:
-            raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
+            raise NoStockDataError(ticker)
 
         event = BreachEvent(
             company_name=req.company, ticker=ticker,
@@ -62,10 +54,7 @@ def create_explain_routes(limiter) -> APIRouter:
 
         features = await asyncio.to_thread(compute_features, event)
         if features is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Insufficient data around breach date {req.breach_date} for {req.company}",
-            )
+            raise InsufficientDataError(req.company, req.breach_date)
 
         model = get_or_train_model()
         report = generate_explanation(event, features, model)
@@ -87,9 +76,9 @@ def create_explain_routes(limiter) -> APIRouter:
 
         ticker = resolve_ticker(req.company)
         if ticker is None:
-            raise HTTPException(status_code=404, detail=f"Could not resolve ticker for '{req.company}'")
+            raise TickerResolutionError(req.company)
 
-        ticker = _validate_ticker(ticker)
+        ticker = validate_ticker(ticker)
         company_name = resolve_company_name_from_ticker(ticker)
 
         incidents = await asyncio.to_thread(search_breach_incidents, company_name, 5)
@@ -110,7 +99,7 @@ def create_explain_routes(limiter) -> APIRouter:
             asyncio.to_thread(fetch_market_data, "2015-01-01", benchmark),
         )
         if stock_data.empty:
-            raise HTTPException(status_code=404, detail=f"No stock data for {ticker}")
+            raise NoStockDataError(ticker)
 
         event = BreachEvent(
             company_name=company_name, ticker=ticker,
@@ -122,10 +111,7 @@ def create_explain_routes(limiter) -> APIRouter:
 
         features = await asyncio.to_thread(compute_features, event)
         if features is None:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Insufficient data around breach date {breach_date} for {company_name}",
-            )
+            raise InsufficientDataError(company_name, breach_date)
 
         model = get_or_train_model()
         report = generate_explanation(event, features, model)

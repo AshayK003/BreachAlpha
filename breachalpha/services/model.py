@@ -7,6 +7,7 @@ calculation. Eliminates 8x duplicated model-loading blocks in server.py.
 from __future__ import annotations
 
 import logging
+from concurrent.futures import ThreadPoolExecutor
 
 import numpy as np
 import pandas as pd
@@ -15,6 +16,9 @@ from ..core.constants import RISK_WEIGHTS, SEVERITY_LABELS
 from ..model import load_model, train_model, predict_severity
 
 logger = logging.getLogger(__name__)
+
+# Thread pool for parallel CPU-bound work (feature computation)
+_compute_pool = ThreadPoolExecutor(max_workers=4)
 
 
 def get_or_train_model():
@@ -113,3 +117,100 @@ def batch_score(model, features_df: pd.DataFrame) -> list[dict]:
                 })
 
     return results
+
+
+def run_analysis_pipeline(preprocess_result, start_date: str = "2010-01-01") -> list[dict]:
+    """Run the full analysis pipeline on a preprocessed dataset.
+
+    Builds BreachEvents, computes features, and batch-scores using the model.
+    Shared by /api/upload/analyze and /api/upload/analyze/config endpoints.
+
+    Args:
+        preprocess_result: Result from preprocess_dataset() containing the cleaned DataFrame.
+        start_date: Start date for stock data fetching.
+
+    Returns:
+        List of result dicts (one per row) with keys matching BatchResult.
+    """
+    from ..feature_engine import BreachEvent, compute_features_batch
+    from ..ticker_resolver import detect_benchmark
+    from ..stock_loader import fetch_stock_data, fetch_market_data, fetch_stock_batch
+
+    df = preprocess_result.df
+
+    # Batch-fetch stock data for all tickers
+    tickers = [str(t) for t in df["ticker"].dropna().unique() if t]
+    stock_cache = fetch_stock_batch(tickers, start=start_date)
+
+    model = get_or_train_model()
+
+    # Build events, collect skipped rows
+    events = []
+    skipped = []
+    for _, row in df.iterrows():
+        company = str(row.get("company_name", ""))
+        ticker = str(row.get("ticker", ""))
+        breach_date = row.get("breach_date")
+        records = int(row.get("records_affected", 0))
+        breach_type = str(row.get("breach_type", "data_leak"))
+
+        if not company or pd.isna(breach_date) or not ticker or ticker == "nan":
+            skipped.append({
+                "company": company, "ticker": ticker or "N/A",
+                "breach_date": str(breach_date)[:10] if not pd.isna(breach_date) else "N/A",
+                "records_affected": records, "breach_type": breach_type,
+                "risk_score": 0, "prediction": "unknown", "confidence": 0,
+                "probabilities": {}, "status": "skipped",
+                "error": "Missing company, date, or ticker",
+            })
+            continue
+
+        stock_data = stock_cache.get(ticker, pd.DataFrame())
+        if stock_data.empty:
+            skipped.append({
+                "company": company, "ticker": ticker,
+                "breach_date": str(breach_date)[:10],
+                "records_affected": records, "breach_type": breach_type,
+                "risk_score": 0, "prediction": "unknown", "confidence": 0,
+                "probabilities": {}, "status": "failed",
+                "error": f"No stock data for {ticker}",
+            })
+            continue
+
+        bm = detect_benchmark(ticker)
+        market_data = fetch_market_data(start=start_date, benchmark=bm)
+        events.append(BreachEvent(
+            company_name=company, ticker=ticker,
+            breach_date=pd.Timestamp(breach_date),
+            pwn_count=records, breach_type=breach_type,
+            stock_data=stock_data, market_data=market_data,
+            benchmark=bm,
+        ))
+
+    # Compute features for all events
+    features_df = compute_features_batch(events)
+
+    # Batch-score all features
+    predictions = batch_score(model, features_df)
+
+    # Build result dicts
+    results = []
+    for idx, (_, feat_row) in enumerate(features_df.iterrows()):
+        features_dict = feat_row.to_dict()
+        pred = predictions[idx]
+        error = pred.pop("_error", None)
+        results.append({
+            "company": features_dict["company_name"],
+            "ticker": features_dict["ticker"],
+            "breach_date": features_dict["breach_date"],
+            "records_affected": int(features_dict["pwn_count"]),
+            "breach_type": features_dict["breach_type"],
+            "risk_score": pred["risk_score"],
+            "prediction": pred["prediction"],
+            "confidence": pred["confidence"],
+            "probabilities": pred["probabilities"],
+            "status": "failed" if pred["prediction"] == "error" else "ok",
+            **({"error": error} if error else {}),
+        })
+
+    return results + skipped
