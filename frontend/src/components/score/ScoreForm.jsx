@@ -312,8 +312,8 @@ export function ScoreForm({ onScore, loading }) {
 
       <div className="grid grid-cols-2 gap-3">
         <div>
-          <label className="text-sm font-medium text-foreground mb-1.5 block font-sans">Breach Type</label>
-          <Select value={breachType} onValueChange={setBreachType}>
+          <label htmlFor="breach-type" className="text-sm font-medium text-foreground mb-1.5 block font-sans">Breach Type</label>
+          <Select id="breach-type" value={breachType} onValueChange={setBreachType}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -327,8 +327,9 @@ export function ScoreForm({ onScore, loading }) {
           </Select>
         </div>
         <div>
-          <label className="text-sm font-medium text-foreground mb-1.5 block font-sans">Records Affected</label>
+          <label htmlFor="records" className="text-sm font-medium text-foreground mb-1.5 block font-sans">Records Affected</label>
           <Input
+            id="records"
             type="number"
             value={records}
             onChange={(e) => setRecords(e.target.value)}
@@ -337,8 +338,8 @@ export function ScoreForm({ onScore, loading }) {
         </div>
       </div>
       <div>
-        <label className="text-sm font-medium text-foreground mb-1.5 block font-sans">Breach Date</label>
-        <Input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
+        <label htmlFor="breach-date" className="text-sm font-medium text-foreground mb-1.5 block font-sans">Breach Date</label>
+        <Input id="breach-date" type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </div>
       <Button type="submit" disabled={loading} className="w-full py-2.5">
         {loading ? (

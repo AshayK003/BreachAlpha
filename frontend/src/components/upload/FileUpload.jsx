@@ -113,14 +113,24 @@ export function FileUpload({ onUpload, onAnalyze, loading }) {
             disabled={loading}
             className="flex-1"
           >
-            {loading ? 'Previewing...' : 'Preview'}
+            {loading ? (
+              <>
+                <div className="animate-spin w-3 h-3 border-2 border-current border-t-transparent rounded-full" />
+                Previewing...
+              </>
+            ) : 'Preview'}
           </Button>
           <Button
             onClick={() => onAnalyze(file)}
             disabled={loading}
             className="flex-1"
           >
-            {loading ? 'Analyzing...' : 'Analyze All'}
+            {loading ? (
+              <>
+                <div className="animate-spin w-3 h-3 border-2 border-white/60 border-t-transparent rounded-full" />
+                Analyzing...
+              </>
+            ) : 'Analyze All'}
           </Button>
         </div>
       )}

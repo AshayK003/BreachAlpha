@@ -64,6 +64,7 @@ export function RiskGauge({ score, prediction }) {
         <span
           className="text-4xl font-bold tracking-tight font-mono"
           style={{ color, transition: 'color 0.3s ease' }}
+          aria-live="polite"
         >
           {score}
         </span>

@@ -57,7 +57,7 @@ export default {
         'purple': '#b366ff',
         'text': '#e0e6f0',
         'text-secondary': '#7a8ba8',
-        'text-dim': '#4a5568',
+        'text-dim': '#708096',
         'void': '#050810',
       },
       fontFamily: {

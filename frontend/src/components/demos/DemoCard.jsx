@@ -2,9 +2,13 @@ import { cn, SEVERITY_COLORS, SEVERITY_CLASSES } from '@/lib/utils'
 
 export function DemoCard({ demo, onClick, onExplain }) {
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label={`Analyze ${demo.company} (${demo.ticker})`}
       onClick={() => onClick(demo)}
-      className="terminal-card corner-accent p-4 text-left w-full hover-lift"
+      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onClick(demo); } }}
+      className="terminal-card corner-accent p-4 text-left w-full hover-lift cursor-pointer"
     >
       <div className="flex items-start justify-between mb-2.5">
         <div className="min-w-0">
@@ -60,6 +64,6 @@ export function DemoCard({ demo, onClick, onExplain }) {
           </div>
         </div>
       )}
-    </button>
+    </div>
   )
 }

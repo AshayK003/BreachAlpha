@@ -135,7 +135,7 @@ export function BatchResults({ data }) {
                   tabIndex={0}
                   aria-expanded={expandedRow === i}
                   onClick={() => setExpandedRow(expandedRow === i ? null : i)}
-                  onKeyDown={(e) => e.key === 'Enter' && setExpandedRow(expandedRow === i ? null : i)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setExpandedRow(expandedRow === i ? null : i); } }}
                   className="border-b border-border/30 hover:bg-surface/50 cursor-pointer transition-colors duration-200"
                 >
                   <td className="py-2 px-3 text-foreground font-medium">{r.company}</td>

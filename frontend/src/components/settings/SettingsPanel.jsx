@@ -122,18 +122,22 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
             <label className="text-sm font-medium text-foreground mb-1.5 block font-sans">
               Quick Presets
             </label>
-            <div className="grid grid-cols-2 gap-2">
-              {presets.map((p) => (
-                <button
-                  key={p.name}
-                  onClick={() => applyPreset(p)}
-                  className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-left hover:border-cyan-500/40 transition-all duration-200 hover:bg-surface-raised"
-                >
-                  <div className="text-foreground font-medium capitalize">{p.name}</div>
-                  <div className="text-secondary-foreground mt-0.5">{p.description}</div>
-                </button>
-              ))}
-            </div>
+            {presets.length === 0 ? (
+              <p className="text-xs text-secondary-foreground py-2">No presets available.</p>
+            ) : (
+              <div className="grid grid-cols-2 gap-2">
+                {presets.map((p) => (
+                  <button
+                    key={p.name}
+                    onClick={() => applyPreset(p)}
+                    className="bg-surface border border-border rounded-lg px-3 py-2 text-xs text-left hover:border-cyan-500/40 transition-all duration-200 hover:bg-surface-raised"
+                  >
+                    <div className="text-foreground font-medium capitalize">{p.name}</div>
+                    <div className="text-secondary-foreground mt-0.5">{p.description}</div>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">
@@ -203,7 +207,7 @@ export function SettingsPanel({ config, setConfig, presets, onLoadPresets }) {
               </div>
 
               <h4 className="text-xs font-semibold text-dim pt-1">CAR Windows</h4>
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {CAR_WINDOWS.map(({ label, key }) => (
                   <div key={key}>
                     <label className="text-sm font-medium text-foreground mb-1.5 block font-sans">

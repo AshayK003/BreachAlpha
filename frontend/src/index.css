@@ -59,7 +59,7 @@
     /* Text colors — improved contrast */
     --text-primary: #e8edf5;
     --text-secondary: #8a9ab5;
-    --text-dim: #5a6a82;
+    --text-dim: #708096;
 
     --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     --font-display: 'Outfit', system-ui, sans-serif;
@@ -114,7 +114,7 @@
     content: '';
     position: fixed;
     inset: 0;
-    z-index: 9999;
+    z-index: 1;
     pointer-events: none;
     background: repeating-linear-gradient(
       0deg,
