@@ -8,7 +8,7 @@ import pandas as pd
 from fastapi import APIRouter, Request
 
 from ..schemas import (
-    ExplainRequest, ExplainResponse, CalculationStepModel,
+    ScoreRequest, ExplainResponse, CalculationStepModel,
 )
 from ..feature_engine import (
     BreachEvent, compute_features,
@@ -29,7 +29,7 @@ def create_explain_routes(limiter) -> APIRouter:
 
     @router.post("/api/explain", response_model=ExplainResponse)
     @limiter.limit("10/minute")
-    async def explain_score(request: Request, req: ExplainRequest):
+    async def explain_score(request: Request, req: ScoreRequest):
         ticker = resolve_ticker(req.company)
         if ticker is None:
             raise TickerResolutionError(req.company)
@@ -71,7 +71,7 @@ def create_explain_routes(limiter) -> APIRouter:
 
     @router.post("/api/explain/auto", response_model=ExplainResponse)
     @limiter.limit("5/minute")
-    async def explain_auto(request: Request, req: ExplainRequest):
+    async def explain_auto(request: Request, req: ScoreRequest):
         from ..breach_search import search_breach_incidents
 
         ticker = resolve_ticker(req.company)

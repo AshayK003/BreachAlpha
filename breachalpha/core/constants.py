@@ -38,6 +38,31 @@ FEATURE_COLS: list[str] = [
 SEVERITY_LABELS: list[str] = ["low", "medium", "high", "critical"]
 SEVERITY_MAP: dict[str, int] = {label: idx for idx, label in enumerate(SEVERITY_LABELS)}
 
+# ── Benchmark Display Names ───────────────────────────────────────────
+BENCHMARK_NAMES: dict[str, str] = {
+    "^GSPC": "S&P 500",
+    "^IXIC": "NASDAQ Composite",
+    "^DJI": "Dow Jones Industrial Average",
+    "^FTSE": "FTSE 100",
+    "^N225": "Nikkei 225",
+    "^NSEI": "NIFTY 50",
+    "^BSESN": "BSE SENSEX",
+    "^HSI": "Hang Seng Index",
+    "^GDAXI": "DAX",
+    "^FCHI": "CAC 40",
+    "^STOXX50E": "EURO STOXX 50",
+    "^GSPTSE": "S&P/TSX Composite",
+    "^AXJO": "S&P/ASX 200",
+    "^BVSP": "Bovespa",
+    "^KS11": "KOSPI",
+    "^KQ11": "KOSDAQ",
+    "^TWII": "TAIEX",
+    "^STI": "Straits Times Index",
+    "^AEX": "AEX",
+    "000001.SS": "SSE Composite",
+    "399001.SZ": "SZSE Component",
+}
+
 # ── Upload Limits ───────────────────────────────────────────────────────
 MAX_UPLOAD_BYTES: int = 50 * 1024 * 1024  # 50 MB
 ALLOWED_UPLOAD_EXTENSIONS: set[str] = {".csv", ".xlsx", ".xls", ".tsv"}

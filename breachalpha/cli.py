@@ -195,25 +195,7 @@ def cmd_train(args: argparse.Namespace) -> int:
     return 0
 
 
-def _train_synthetic() -> dict:
-    """Train on synthetic data for demo purposes."""
-    import numpy as np
-
-    np.random.seed(42)
-    n = 100
-    synthetic = pd.DataFrame({
-        "abnormal_return_day0": np.random.normal(-0.02, 0.05, n),
-        "abnormal_return_day1": np.random.normal(-0.01, 0.04, n),
-        "abnormal_return_day5": np.random.normal(-0.005, 0.03, n),
-        "abnormal_return_day30": np.random.normal(0.001, 0.02, n),
-        "car_minus1_plus1": np.random.normal(-0.03, 0.08, n),
-        "car_minus5_plus30": np.random.normal(-0.05, 0.12, n),
-        "volatility_spike": np.random.uniform(0.8, 3.0, n),
-        "volume_change": np.random.uniform(0.5, 5.0, n),
-        "time_to_recovery": np.random.choice([5, 10, 20, 30, 60, None], n),
-        "pwn_count": np.random.lognormal(15, 2, n).astype(int),
-    })
-    return train_model(synthetic)
+from .services.model import _train_synthetic
 
 
 def cmd_score(args: argparse.Namespace) -> int:

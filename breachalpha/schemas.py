@@ -17,11 +17,7 @@ class ScoreRequest(BaseModel):
     breach_date: str = Field(default="2024-01-01", description="Breach date (YYYY-MM-DD)")
 
 
-class ExplainRequest(BaseModel):
-    company: str
-    breach_type: str = "data_leak"
-    records_affected: int = 1_000_000
-    breach_date: str = "2024-01-01"
+# ExplainRequest is identical to ScoreRequest -- use ScoreRequest everywhere
 
 
 class TrainRequest(BaseModel):

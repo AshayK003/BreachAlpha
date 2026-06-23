@@ -194,7 +194,7 @@ export default function App() {
         Support
       </a>
 
-      <Header />
+      <Header health={health} />
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-7" role="main" aria-live="polite">
         <div className="text-center mb-7 fade-in">
@@ -312,7 +312,19 @@ export default function App() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
                     </svg>
                     <h3 className="text-sm font-semibold text-foreground mb-1">No Analysis Yet</h3>
-                    <p className="text-xs text-secondary-foreground">Enter a company name in the form or load a demo to see the risk analysis.</p>
+                    <p className="text-xs text-secondary-foreground mb-4">Enter a company name in the form or load a demo to see the risk analysis.</p>
+                    <div className="flex flex-wrap justify-center gap-2">
+                      {['TATAMOTORS.NS', 'RELIANCE.NS', 'MSFT', 'AAPL'].map((ticker) => (
+                        <button
+                          key={ticker}
+                          type="button"
+                          onClick={() => handleScore({ company: ticker })}
+                          className="px-3 py-1.5 rounded-lg text-[0.65rem] font-mono bg-surface border border-border text-secondary-foreground hover:border-cyan/30 hover:text-cyan transition-all duration-200"
+                        >
+                          {ticker}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 )}
 

@@ -19,18 +19,10 @@ def _resolve_company_name(input_str: str) -> str:
 
     Uses the reverse ticker map from ticker_resolver (single source of truth).
     """
-    from .ticker_resolver import KNOWN_TICKERS
-
     cleaned = input_str.strip().upper()
     bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", cleaned)
 
-    # Build reverse map: ticker -> company name
-    rev: dict[str, str] = {}
-    for name, ticker in KNOWN_TICKERS.items():
-        if ticker:
-            rev[ticker.upper()] = name.title()
-            t_bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", ticker.upper())
-            rev[t_bare] = name.title()
+    rev = _get_reverse_ticker_map()
 
     if cleaned in rev:
         return rev[cleaned]
@@ -38,6 +30,26 @@ def _resolve_company_name(input_str: str) -> str:
         return rev[bare]
 
     return input_str
+
+
+# Module-level cached reverse ticker map (rebuilt only if KNOWN_TICKERS changes)
+_reverse_ticker_cache: dict[str, str] | None = None
+
+
+def _get_reverse_ticker_map() -> dict[str, str]:
+    """Return cached reverse ticker -> company name map."""
+    global _reverse_ticker_cache
+    if _reverse_ticker_cache is not None:
+        return _reverse_ticker_cache
+    from .ticker_resolver import KNOWN_TICKERS
+    rev: dict[str, str] = {}
+    for name, ticker in KNOWN_TICKERS.items():
+        if ticker:
+            rev[ticker.upper()] = name.title()
+            t_bare = re.sub(r"\.(NS|BO|NSE|BSE|L|DE|TO|HK|SS|SZ)$", "", ticker.upper())
+            rev[t_bare] = name.title()
+    _reverse_ticker_cache = rev
+    return rev
 
 
 def _get_browser_session():

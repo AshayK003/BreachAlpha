@@ -83,7 +83,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             "style-src 'self' 'unsafe-inline'; "
             "img-src 'self' data:; "
             "font-src 'self' https://fonts.gstatic.com; "
-            "connect-src 'self' http://192.168.56.1:1234 http://localhost:1234; "
+            "connect-src 'self'; "
             "frame-ancestors 'none'"
         )
         return response

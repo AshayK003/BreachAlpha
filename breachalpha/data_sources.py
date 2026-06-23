@@ -235,13 +235,9 @@ class YFinanceSource(DataSource):
 
         # Fallback: sequential with caching
         for ticker in tickers:
-            cached = self._read_cache(ticker, "yfinance") if hasattr(self, '_read_cache') else None
-            if cached is not None:
-                results[ticker] = cached
-            else:
-                df = self.fetch(ticker, start, end)
-                if not df.empty:
-                    results[ticker] = df
+            df = self.fetch(ticker, start, end)
+            if not df.empty:
+                results[ticker] = df
 
         return results
 
