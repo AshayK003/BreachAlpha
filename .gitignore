@@ -48,3 +48,5 @@ desktop.ini
 .env
 .env.*
 config_local.*
+
+internals/
