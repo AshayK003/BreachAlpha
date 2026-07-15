@@ -53,7 +53,7 @@ class AnalysisConfig:
     car_long_start: int = -5
     car_long_end: int = 30
     # AR calculation days
-    ar_days: list = None
+    ar_days: list[int] = None
 
     def __post_init__(self):
         if self.ar_days is None:
