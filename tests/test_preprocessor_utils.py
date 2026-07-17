@@ -1,6 +1,10 @@
 import pandas as pd
 import pytest
 
+# =====================================================
+# Tests for _sanitize_formula_injection()
+# =====================================================
+
 from breachalpha.preprocessor import _sanitize_formula_injection
 
 class TestSanitizeFormulaInjection:
@@ -53,3 +57,43 @@ class TestSanitizeFormulaInjection:
         _sanitize_formula_injection(df)
 
         assert len(df) == 0
+
+
+
+# =====================================================
+# Tests for normalize_column_name()
+# =====================================================
+
+
+from breachalpha.preprocessor import normalize_column_name
+
+class TestNormalizeColumnName:
+    def test_lowercase(self):
+        assert normalize_column_name("Company") == "company"
+
+    def test_spaces_to_underscores(self):
+        assert normalize_column_name("First Name") == "first_name"
+
+    def test_hyphens_to_underscores(self):
+        assert normalize_column_name("breach-date") == "breach_date"
+
+    def test_special_chars_removed(self):
+        assert normalize_column_name("Records (#)") == "records"
+
+    def test_leading_trailing_underscores_stripped(self):
+        assert normalize_column_name("_private_") == "private"
+
+    def test_multiple_underscores_collapsed(self):
+        assert normalize_column_name("a___b") == "a_b"
+
+    def test_already_normalized(self):
+        assert normalize_column_name("company_name") == "company_name"
+
+    def test_empty_string(self):
+        assert normalize_column_name("") == ""
+
+    def test_numbers_preserved(self):
+        assert normalize_column_name("col123") == "col123"
+
+    def test_dots_removed(self):
+        assert normalize_column_name("user.name") == "username"
