@@ -60,8 +60,8 @@ def load_breaches(csv_path: str | Path) -> pd.DataFrame:
 
     # Filter out fabricated, spam, and malware entries
     for col in ["IsFabricated", "IsSpamList", "IsMalware"]:
-        if col in df.columns:
-            df = df[df[col] == False]  # noqa: E712
+     if col in df.columns:
+        df = df[~df[col].fillna(False).astype(bool)]
 
     # Filter small breaches
     df = df[df["PwnCount"] >= MIN_RECORDS_AFFECTED]
