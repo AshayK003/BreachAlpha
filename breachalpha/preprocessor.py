@@ -222,7 +222,7 @@ def _sanitize_formula_injection(df: pd.DataFrame) -> None:
     """
     formula_prefixes = ("=", "+", "-", "@")
     for col in df.columns:
-        if df[col].dtype == object:  # string columns only
+        if pd.api.types.is_string_dtype(df[col]):  # string columns only
             mask = df[col].astype(str).str.strip().str.startswith(formula_prefixes, na=False)
             if mask.any():
                 df.loc[mask, col] = "\t" + df.loc[mask, col].astype(str)
