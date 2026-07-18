@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.4.0] — 2026-07-18
+
+### Added
+- **tests**: 13 unit tests for `_extract_records_from_text()` and `_detect_breach_type()` covering multiple record count formats and breach type classification
+- **tests**: 17 unit tests for `_sanitize_formula_injection()` and `normalize_column_name()` covering formula prefixes, edge cases, and column name normalization patterns
+
+### Fixed
+- **preprocessor**: `_sanitize_formula_injection()` now handles pandas 3.x Arrow StringDtype — replaced `dtype == object` check with `pd.api.types.is_string_dtype()`
+- **breach_loader**: `== False` comparison replaced with safe `~df[col].fillna(False).astype(bool)` filter that handles nullable boolean columns
+- **feature_engine**: `ar_days: list` typehint tightened to `list[int]`
+
+### Changed
+- Test suite expanded from 144 to 188 tests across 14 modules
+
 ## [0.3.3] — 2026-06-02
 
 ### Fixed

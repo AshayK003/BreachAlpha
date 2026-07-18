@@ -6,7 +6,7 @@ Quantify the financial impact of cybersecurity incidents on publicly traded comp
 [![FastAPI](https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-20232A?logo=react&logoColor=61DAFB)](https://react.dev/)
 [![XGBoost](https://img.shields.io/badge/XGBoost-EC4B3E?)](https://xgboost.readthedocs.io/)
-[![Tests](https://img.shields.io/badge/tests-144%20passing-brightgreen)](https://github.com/AshayK003/BreachAlpha)
+[![Tests](https://img.shields.io/badge/tests-188%20passing-brightgreen)](https://github.com/AshayK003/BreachAlpha)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![GitHub Stars](https://img.shields.io/github/stars/AshayK003/BreachAlpha?logo=github)](https://github.com/AshayK003/BreachAlpha)
 
@@ -96,7 +96,7 @@ frontend/                     # React + Vite + Tailwind CSS
 │       └── ui/               # shadcn/ui primitives
 └── package.json
 
-tests/                        # 144 tests across 11 modules
+tests/                        # 188 tests across 14 modules
 ```
 
 ### Key design decisions
@@ -433,7 +433,7 @@ Make sure you're in the project root and the virtual environment is activated.
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-change`
 3. Make changes and add tests
-4. Run `pytest` — all 144 tests must pass
+4. Run `pytest` — all 188 tests must pass
 5. Run `pytest --cov=breachalpha --cov-fail-under=60` — coverage must not drop
 6. Submit a pull request
 

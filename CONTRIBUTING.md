@@ -17,7 +17,7 @@ cd frontend && npm install && cd ..
 Verify everything works:
 
 ```bash
-pytest                        # 144 tests pass
+pytest                        # 188 tests pass
 cd frontend && npm run build  # builds clean
 ```
 
