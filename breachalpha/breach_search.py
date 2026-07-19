@@ -357,10 +357,10 @@ def _extract_records_from_text(text: str) -> int:
 
     # Match patterns like "10 million records", "50,000 accounts", "1.5B users"
     patterns = [
-        (r"(\d+[\d,\.]*)\s*(?:million|m)\s*(?:records?|accounts?|users?|people)", 1_000_000),
         (r"(\d+[\d,\.]*)\s*(?:billion|b)\s*(?:records?|accounts?|users?|people)", 1_000_000_000),
+        (r"(\d+[\d,\.]*)\s*(?:million|m)\s*(?:records?|accounts?|users?|people)", 1_000_000),
         (r"(\d+[\d,\.]*)\s*(?:thousand|k)\s*(?:records?|accounts?|users?|people)", 1_000),
-        (r"(\d+[\d,\.]*)\s*(?:records?|accounts?|users?|people)\s*(?:breached|exposed|stolen|compromised)", 1),
+        (r"(\d+[\d,\.]*)\s*(?:records?|accounts?|users?|people)\s*(?:breached|exposed|stolen|compromised|affected)", 1),
     ]
 
     for pattern, multiplier in patterns:
@@ -368,7 +368,7 @@ def _extract_records_from_text(text: str) -> int:
         if match:
             num_str = match.group(1).replace(",", "")
             try:
-                return int(num_str) * multiplier
+                return int(float(num_str) * multiplier)
             except ValueError:
                 continue
 

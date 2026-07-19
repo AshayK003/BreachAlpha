@@ -10,7 +10,7 @@ class TestExtractRecords:
         assert _extract_records_from_text("10 million records breached") == 10_000_000
 
     def test_billion_users(self):
-        assert _extract_records_from_text("1.5B users affected") == 0  # not currently parsed
+        assert _extract_records_from_text("1.5B users affected") == 1_500_000_000
 
     def test_thousand_accounts(self):
         assert _extract_records_from_text("50 thousand accounts exposed") == 50_000
@@ -22,7 +22,7 @@ class TestExtractRecords:
         assert _extract_records_from_text("no numbers here") == 0
 
     def test_comma_separated(self):
-        assert _extract_records_from_text("1,200,000 people affected") == 0  # not currently parsed
+        assert _extract_records_from_text("1,200,000 people affected") == 1_200_000
 
     def test_case_insensitive(self):
         assert _extract_records_from_text("5 MILLION RECORDS BREACHED") == 5_000_000
