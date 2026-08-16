@@ -40,7 +40,8 @@ include = ["breachalpha*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = ["test_*.py"]
-addopts = "-v --tb=short"
+addopts = "-v --tb=short --import-mode=importlib"
+pythonpath = ["."]
 
 [tool.coverage.run]
 source = ["breachalpha"]
