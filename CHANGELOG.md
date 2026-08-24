@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.4.1] — 2026-08-24
+
+### Fixed
+- **Packaging:** `python-multipart` is required by the upload routes
+  (`routes/upload.py`, `services/file_upload.py` use FastAPI `UploadFile`)
+  and was pinned in requirements.txt but missing from `[project.dependencies]`.
+  Editable/`pip install .` installs crashed on first upload request; the dep
+  is now declared in pyproject metadata.
+
 ## [0.4.0] — 2026-07-18
 
 ### Added

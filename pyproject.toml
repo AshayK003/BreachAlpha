@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "breachalpha"
-version = "0.4.0"
+version = "0.4.1"
 description = "BreachAlpha — quantify financial impact of cybersecurity incidents"
 readme = "README.md"
 license = "MIT"
@@ -22,6 +22,7 @@ dependencies = [
     "requests>=2.28",
     "curl_cffi>=0.7",
     "openpyxl>=3.1",
+    "python-multipart>=0.0.18",
 ]
 
 [project.optional-dependencies]
