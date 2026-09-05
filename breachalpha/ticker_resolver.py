@@ -33,8 +33,7 @@ KNOWN_TICKERS: dict[str, str] = {
     "paypal": "PYPL", "block": "SQ", "shopify": "SHOP", "zoom": "ZM",
     "dell": "DELL", "hp": "HPQ", "qualcomm": "QCOM", "broadcom": "AVGO",
     "accenture": "ACN",
-    "tech mahindra": "TECHM.NS", "hcl technologies": "HCLTECH.NS",
-    "tata consultancy": "TCS.NS", "tcs": "TCS.NS",
+    "tcs": "TCS.NS",
 
     # ── US Finance ──
     "jpmorgan chase": "JPM", "bank of america": "BAC", "citigroup": "C",
@@ -94,7 +93,7 @@ KNOWN_TICKERS: dict[str, str] = {
     "cognizant": "CTSH",  # US-listed
 
     # Mining & Metals
-    "vedanta": "VEDL.NS", "vedl": "VEDL.NS", "tata steel": "TATASTEEL.NS",
+    "vedanta": "VEDL.NS", "vedl": "VEDL.NS",
     "jsw steel": "JSWSTEEL.NS", "hindalco": "HINDALCO.NS",
     "coal india": "COALINDIA.NS", "nmdc": "NMDC.NS",
     "hindustan zinc": "HINDZINC.NS", "hindustan copper": "HINDCOPPER.NS",
@@ -129,9 +128,9 @@ KNOWN_TICKERS: dict[str, str] = {
     # Energy
     "oil and natural gas corporation": "ONGC.NS", "ongc": "ONGC.NS",
     "ntpc": "NTPC.NS", "power grid corporation": "POWERGRID.NS",
-    "coal india": "COALINDIA.NS", "hindustan petroleum": "HINDPETRO.NS",
+    "hindustan petroleum": "HINDPETRO.NS",
     "bharat petroleum": "BPCL.NS", "gail": "GAIL.NS",
-    "tata power": "TATAPOWER.NS", "adani green energy": "ADANIGREEN.NS",
+    "adani green energy": "ADANIGREEN.NS",
 
     # Telecom
     "bharti airtel": "BHARTIARTL.NS", "airtel": "BHARTIARTL.NS",
