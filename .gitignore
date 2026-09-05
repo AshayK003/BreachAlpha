@@ -18,6 +18,11 @@ env/
 .vscode/
 .idea/
 *.swp
+
+# Internal files
+.superpowers/
+internals/
+.venv-audit/
 *.swo
 
 # Testing

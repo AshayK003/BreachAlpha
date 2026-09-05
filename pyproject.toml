@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "breachalpha"
-version = "0.4.1"
+version = "0.5.0"
 description = "BreachAlpha — quantify financial impact of cybersecurity incidents"
 readme = "README.md"
 license = "MIT"

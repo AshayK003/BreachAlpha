@@ -9,6 +9,7 @@ from __future__ import annotations
 import hmac
 import logging
 import os
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, HTTPException, Request
@@ -45,10 +46,28 @@ structlog.configure(
 log = structlog.get_logger(__name__)
 
 # ── App ──────────────────────────────────────────────────────────────────
+from breachalpha import __version__
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Warm the model at boot so the first request isn't cold. Never crash
+    # startup: without weights it falls back to synthetic training, and any
+    # failure just means lazy load on first request.
+    try:
+        from .services.model import get_or_train_model
+        get_or_train_model()
+        log.info("model warmup complete")
+    except Exception as e:
+        log.warning("model warmup skipped", error=str(e))
+    yield
+
+
 app = FastAPI(
     title="BreachAlpha API",
     description="Quantify the financial impact of cybersecurity incidents",
-    version="0.1.0",
+    version=__version__,
+    lifespan=lifespan,
 )
 
 # Rate limiting: in-memory storage (single-server; use Redis for multi-instance)

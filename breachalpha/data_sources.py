@@ -523,7 +523,7 @@ class DataFetcher:
                 return None
             df = pd.read_csv(path, index_col=0, parse_dates=True)
             return df if not df.empty else None
-        except Exception:
+        except (OSError, ValueError):
             return None
 
     def _write_cache(self, ticker: str, source: str, df: pd.DataFrame) -> None:

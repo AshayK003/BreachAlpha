@@ -252,18 +252,20 @@ def generate_explanation(
     event_idx_stock = common_dates.get_indexer([event_date], method="nearest")[0]
     event_idx_returns = common_return_dates.get_indexer([event_date], method="nearest")[0]
 
-    # Step 1: Daily returns around event
+    # Step 1: Daily returns around event (price looked up by DATE so the
+    # narrated day matches the scored AR — returns/price spaces differ by one)
     for offset, label in [(-1, "Day -1"), (0, "Day 0 (Event)"), (1, "Day +1"), (5, "Day +5")]:
         idx = event_idx_returns + offset
-        if 0 < idx < len(stock_returns):
-            step = explain_daily_return(stock["Close"], event_idx_stock + offset, label)
+        if 0 <= idx < len(stock_returns):
+            price_idx = int(common_dates.get_indexer([common_return_dates[idx]])[0])
+            step = explain_daily_return(stock["Close"], price_idx, label)
             step.step_number = len(steps) + 1
             steps.append(step)
 
     # Step 2: Market returns for same days
     for offset, label in [(0, "Day 0"), (1, "Day +1")]:
         idx = event_idx_returns + offset
-        if 0 < idx < len(market_returns):
+        if 0 <= idx < len(market_returns):
             sr = float(stock_returns.iloc[idx])
             mr = float(market_returns.iloc[idx])
             step = explain_abnormal_return(sr, mr, label)
@@ -311,7 +313,8 @@ def generate_explanation(
     step.step_number = len(steps) + 1
     steps.append(step)
 
-    # Feature contributions (SHAP-like approximation)
+    # Feature contributions (magnitude-only approximation, NOT SHAP: absolute
+    # values so negative CARs don't read as "reduces risk")
     feature_contributions = {}
     importance_weights = {
         "abnormal_return_day0": 0.25,
@@ -327,7 +330,7 @@ def generate_explanation(
         val = getattr(features, feat, 0)
         if val is None:
             val = 0
-        contribution = float(val) * weight
+        contribution = abs(float(val)) * weight
         feature_contributions[feat] = round(contribution, 6)
 
     return ExplainabilityReport(

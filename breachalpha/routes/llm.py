@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import re
 
 from fastapi import APIRouter, HTTPException, Request
 
@@ -23,12 +24,13 @@ def create_llm_routes(limiter) -> APIRouter:
         from ..llm_integration import check_lm_studio, LLMConfig
         config = LLMConfig()
         status = await asyncio.to_thread(check_lm_studio, config)
+        # Never expose internal topology: mask the URL and raw errors.
         return LLMStatusResponse(
             available=status["available"],
-            url=status["url"],
+            url=config.base_url if status["available"] else "",
             models=status.get("models", []),
             default_model=status.get("default_model", ""),
-            error=status.get("error"),
+            error="LM Studio unreachable" if status.get("error") else None,
         )
 
     @router.post("/api/llm/analyze-dataset", response_model=LLMAnalysisResponse)
@@ -38,6 +40,8 @@ def create_llm_routes(limiter) -> APIRouter:
 
         config = LLMConfig()
         if req.model:
+            if len(req.model) > 100 or not re.fullmatch(r"[\w][\w\-./: ]*", req.model):
+                raise HTTPException(status_code=400, detail="Invalid model name.")
             config.model = req.model
 
         result = await asyncio.to_thread(analyze_breach_dataset,
@@ -95,6 +99,11 @@ def create_llm_routes(limiter) -> APIRouter:
     @limiter.limit("5/minute")
     async def llm_enrich_records(request: Request, records: list[dict]):
         from ..llm_integration import enrich_breach_records, LLMConfig
+
+        if len(records) > 10:
+            raise HTTPException(status_code=413, detail="Too many records (max 10 per request).")
+        if not records:
+            raise HTTPException(status_code=400, detail="Records list is empty.")
 
         config = LLMConfig()
         enriched = await asyncio.to_thread(enrich_breach_records, records, config=config)

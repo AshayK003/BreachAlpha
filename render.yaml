@@ -3,6 +3,7 @@ services:
     name: breachalpha
     runtime: docker
     plan: free
+    healthCheckPath: /api/health
     envVars:
       - key: BREACHALPHA_LLM_URL
         sync: false

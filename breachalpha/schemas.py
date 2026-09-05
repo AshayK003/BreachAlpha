@@ -4,17 +4,28 @@ from __future__ import annotations
 
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+import datetime
 
 
 # ── Request Models ──────────────────────────────────────────────────────
 
 
 class ScoreRequest(BaseModel):
-    company: str = Field(..., description="Company name (e.g., 'Equifax')")
-    breach_type: str = Field(default="data_leak", description="Breach type: data_leak, ransomware, hack, etc.")
-    records_affected: int = Field(default=1_000_000, description="Number of records affected")
-    breach_date: str = Field(default="2024-01-01", description="Breach date (YYYY-MM-DD)")
+    company: str = Field(..., max_length=200, description="Company name (e.g., 'Equifax')")
+    breach_type: str = Field(default="data_leak", max_length=50, description="Breach type: data_leak, ransomware, hack, etc.")
+    records_affected: int = Field(default=1_000_000, ge=0, le=10**12, description="Number of records affected")
+    breach_date: str = Field(default="2024-01-01", max_length=10, description="Breach date (YYYY-MM-DD)")
+
+    @field_validator("breach_date")
+    @classmethod
+    def _check_date(cls, v: str) -> str:
+        try:
+            datetime.date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("breach_date must be YYYY-MM-DD")
+        return v
 
 
 # ExplainRequest is identical to ScoreRequest -- use ScoreRequest everywhere

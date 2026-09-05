@@ -130,14 +130,17 @@ def parse_numeric(series: pd.Series) -> pd.Series:
     return pd.to_numeric(cleaned, errors="coerce")
 
 
-def validate_dataset(df: pd.DataFrame) -> dict:
+def validate_dataset(df: pd.DataFrame, missing_records: int | None = None) -> dict:
     """Validate dataset quality and return validation report."""
     report = {
         "total_rows": len(df),
         "total_columns": len(df.columns),
         "missing_company": int(df["company_name"].isna().sum()) if "company_name" in df.columns else len(df),
         "missing_date": int(df["breach_date"].isna().sum()) if "breach_date" in df.columns else len(df),
-        "missing_records": int(df["records_affected"].isna().sum()) if "records_affected" in df.columns else 0,
+        # Prefer the pre-fillna count when the caller tracked it (fillna(0)
+        # erases missingness before this runs).
+        "missing_records": missing_records if missing_records is not None else (
+            int(df["records_affected"].isna().sum()) if "records_affected" in df.columns else 0),
         "date_range": None,
         "unique_companies": df["company_name"].nunique() if "company_name" in df.columns else 0,
         "quality_score": 0.0,
@@ -308,7 +311,13 @@ def preprocess_dataset(
     # Step 4: Parse numeric columns
     if "records_affected" in df.columns:
         df["records_affected"] = parse_numeric(df["records_affected"])
+        # Count missing BEFORE fillna(0), or validation can never see them.
+        missing_records_raw = int(df["records_affected"].isna().sum())
+        if missing_records_raw > 0:
+            warnings.append(f"{missing_records_raw} rows missing records_affected — treated as 0")
         df["records_affected"] = df["records_affected"].fillna(0).astype(int)
+    else:
+        missing_records_raw = 0
 
     # Step 5: Filter by record threshold
     if "records_affected" in df.columns and config.records_threshold > 0:
@@ -340,7 +349,7 @@ def preprocess_dataset(
     cleaned_rows = len(df)
 
     # Step 9: Validate
-    validation = validate_dataset(df)
+    validation = validate_dataset(df, missing_records_raw)
 
     # Generate preview
     preview_cols = [c for c in ["company_name", "breach_date", "records_affected", "breach_type", "ticker"] if c in df.columns]

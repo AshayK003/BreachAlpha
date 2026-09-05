@@ -73,8 +73,8 @@ def batch_score(model, features_df: pd.DataFrame) -> list[dict]:
     """
     results = []
     try:
-        from ..core.constants import FEATURE_COLS
-        feature_cols = [c for c in FEATURE_COLS if c in features_df.columns]
+        from ..core.constants import TRAIN_FEATURE_COLS
+        feature_cols = [c for c in TRAIN_FEATURE_COLS if c in features_df.columns]
         all_features = features_df[feature_cols].replace([np.inf, -np.inf], np.nan)
         if "time_to_recovery" in all_features.columns:
             all_features["time_to_recovery"] = pd.to_numeric(all_features["time_to_recovery"], errors="coerce")

@@ -33,7 +33,7 @@ KNOWN_TICKERS: dict[str, str] = {
     "paypal": "PYPL", "block": "SQ", "shopify": "SHOP", "zoom": "ZM",
     "dell": "DELL", "hp": "HPQ", "qualcomm": "QCOM", "broadcom": "AVGO",
     "accenture": "ACN",
-    "tech mahindra": "TECHM.ME", "hcl technologies": "HCLTECH.NS",
+    "tech mahindra": "TECHM.NS", "hcl technologies": "HCLTECH.NS",
     "tata consultancy": "TCS.NS", "tcs": "TCS.NS",
 
     # ── US Finance ──
@@ -115,7 +115,7 @@ KNOWN_TICKERS: dict[str, str] = {
     "reliance industries": "RELIANCE.NS", "reliance": "RELIANCE.NS",
     "tata sons": "TATAELXSI.NS", "tata motors": "TATAMOTORS.NS",
     "tata steel": "TATASTEEL.NS", "tata power": "TATAPOWER.NS",
-    "tata consumers": "TATACONSUM.NS", "tata communications": "TATA COMM.NS",
+    "tata consumers": "TATACONSUM.NS", "tata communications": "TATACOMM.NS",
     "tata chemicals": "TATACHEM.NS", "tata investment": "TATAINVEST.NS",
     "adani enterprises": "ADANIENT.NS", "adani ports": "ADANIPORTS.NS",
     "adani green": "ADANIGREEN.NS", "adani power": "ADANIPOWER.NS",
@@ -219,21 +219,22 @@ def resolve_ticker(company_name: str, overrides: Optional[dict[str, str]] = None
     if name_lower in KNOWN_TICKERS:
         return KNOWN_TICKERS[name_lower]
 
-    # Step 3: Partial match (company name contains known name or vice versa)
+    # Step 3: Partial match — both sides need substance, else "C" or
+    # "UNKNOWN" false-positive against short keys/names.
     for key, ticker in KNOWN_TICKERS.items():
-        if key in name_lower or name_lower in key:
+        if ticker is None:
+            continue
+        if (len(key) > 3 and key in name_lower) or (len(name_lower) > 3 and name_lower in key):
             return ticker
 
     # Step 4: Direct ticker with suffix (e.g., TATAPOWER.NS, RELIANCE.BO) — trust user
     if TICKER_WITH_SUFFIX.match(name_upper):
         return name_upper
 
-    # Step 5: Bare ticker (e.g., MSFT, VEDL) — trust user
-    if TICKER_BARE.match(name_upper):
+    # Step 5: Bare ticker (e.g., MSFT) — only when it's a known symbol.
+    # Unknown bare words ("UNKNOWN", "C") must resolve to None, not themselves.
+    if TICKER_BARE.match(name_upper) and name_upper in TICKER_TO_COMPANY:
         return name_upper
-    for key, ticker in KNOWN_TICKERS.items():
-        if len(key) > 3 and key in name_lower:
-            return ticker
 
     return None
 

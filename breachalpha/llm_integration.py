@@ -32,6 +32,12 @@ class LLMConfig:
     max_tokens: int = 2048
     timeout: int = 60
 
+    def __post_init__(self):
+        from urllib.parse import urlparse
+        scheme = urlparse(self.base_url).scheme
+        if scheme not in ("http", "https"):
+            raise ValueError(f"LLM base_url must be http(s), got {scheme!r}")
+
 
 def _get_session():
     """Get HTTP session for LM Studio API."""

@@ -1,6 +1,34 @@
 # Changelog
 
-## [0.4.1] — 2026-08-24
+## [0.5.0] - 2026-09-05
+
+### Fixed (audit remediation)
+
+- **Target leakage closed** — `car_minus5_plus30` generates the label and no
+  longer trains as a feature (`TRAIN_FEATURE_COLS` used for train AND serve;
+  old saved models must be retrained). Feature importances now zip actual
+  trained columns.
+- **Ticker false-positives closed** — partial matches need substance both
+  ways; bare tickers resolve only from the known map (`"C"`/Citigroup still
+  works, `"UNKNOWN"` returns None). Fixed `TECHM.ME` → `TECHM.NS`,
+  `TATA COMM.NS` → `TATACOMM.NS`.
+- **Event-study correctness** — volume sliced in price space; nearest-date
+  snap capped at 5 days; short post-windows return None instead of
+  zero-filling; explain narrates the scored day; contributions absolute
+  (not SHAP); missingness counted before fillna.
+- **API hardening** — `/api/llm/enrich` capped at 10 records; model names
+  validated; `LLMConfig` rejects non-http(s) URLs; oversized uploads leave
+  no partial file (Windows handle-safe); `/api/llm/status` masks URL and
+  errors; `ScoreRequest` constrains company/records/date.
+- **Ops** — single-source version 0.5.0; model warmup at startup (never
+  crashes boot); `render.yaml` health check; `.superpowers/` untracked.
+
+### Tests
+
+- 8 new regression tests (`tests/test_audit_fixes.py`); full suite
+  197 passed.
+
+## [0.4.1] - 2026-08-24
 
 ### Fixed
 - **Packaging:** `python-multipart` is required by the upload routes

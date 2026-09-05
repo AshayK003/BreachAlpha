@@ -15,7 +15,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import cross_val_score, StratifiedKFold
 
 from .feature_engine import classify_severity
-from .core.constants import FEATURE_COLS, SEVERITY_LABELS, SEVERITY_MAP, RISK_WEIGHTS
+from .core.constants import FEATURE_COLS, TRAIN_FEATURE_COLS, SEVERITY_LABELS, SEVERITY_MAP, RISK_WEIGHTS
 
 logger = logging.getLogger(__name__)
 
@@ -35,8 +35,8 @@ def prepare_training_data(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.Series]:
     y = df["car_minus5_plus30"].apply(classify_severity)
     y = y.map(SEVERITY_MAP)
 
-    # Select feature columns
-    available_cols = [col for col in FEATURE_COLS if col in df.columns]
+    # Select feature columns (label-source columns excluded — see LABEL_COLS)
+    available_cols = [col for col in TRAIN_FEATURE_COLS if col in df.columns]
     X = df[available_cols].copy()
 
     # Handle NaN/inf
@@ -102,8 +102,9 @@ def train_model(
     # Train on full data
     model.fit(X, y)
 
-    # Feature importance
-    importance = dict(zip(FEATURE_COLS[:len(model.feature_importances_)], model.feature_importances_))
+    # Feature importance (zipped with the ACTUAL trained columns, not the
+    # full constant — they differ when input columns are missing)
+    importance = dict(zip(X.columns, model.feature_importances_))
     importance_sorted = {k: float(v) for k, v in sorted(importance.items(), key=lambda x: x[1], reverse=True)}
 
     metrics = {
@@ -119,7 +120,7 @@ def train_model(
     return {
         "model": model,
         "metrics": metrics,
-        "feature_cols": FEATURE_COLS[:len(model.feature_importances_)],
+        "feature_cols": list(X.columns),
     }
 
 
@@ -166,7 +167,7 @@ def predict_severity(model: xgb.XGBClassifier, features: pd.DataFrame) -> dict:
     Returns:
         Dict with prediction, probabilities, and risk score.
     """
-    available_cols = [col for col in FEATURE_COLS if col in features.columns]
+    available_cols = [col for col in TRAIN_FEATURE_COLS if col in features.columns]
     X = features[available_cols].replace([np.inf, -np.inf], np.nan)
     if "time_to_recovery" in X.columns:
         X["time_to_recovery"] = pd.to_numeric(X["time_to_recovery"], errors="coerce")

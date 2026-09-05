@@ -63,6 +63,18 @@ async def save_upload(file: UploadFile, suffix: str) -> Path:
             if total_size > MAX_UPLOAD_BYTES:
                 raise FileTooLargeError(MAX_UPLOAD_BYTES // (1024 * 1024))
             tmp.write(chunk)
+    except Exception:
+        # Windows holds an open handle: close before unlinking, or the
+        # partial file survives and repeated attempts fill the disk.
+        try:
+            tmp.close()
+        except OSError:
+            pass
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
     finally:
         tmp.close()
     return tmp_path

@@ -43,6 +43,9 @@ class AnalysisConfig:
     post_event_window: int = DEFAULT_POST_EVENT_WINDOW
     recovery_max_days: int = 90
     min_data_days: int = 30
+    # Max snap distance (days) for nearest-date matching — farther means the
+    # event is outside the data range and features would be fabricated.
+    max_event_distance_days: int = 5
     # Severity thresholds (CAR values)
     threshold_critical: float = -0.15
     threshold_high: float = -0.07
@@ -253,9 +256,11 @@ def compute_features(
     stock = stock.loc[common_dates]
     market = market.loc[common_dates]
 
-    # Find event date index
+    # Find event date index (capped: far-outside-range dates must not snap)
     event_date = pd.Timestamp(event.breach_date)
     event_idx = common_dates.get_indexer([event_date], method="nearest")[0]
+    if abs((common_dates[event_idx] - event_date).days) > config.max_event_distance_days:
+        return None
 
     if event_idx < config.pre_event_window:
         return None
@@ -274,6 +279,11 @@ def compute_features(
     # Compute abnormal returns once (vectorized)
     abnormal_returns = compute_abnormal_returns_vec(stock_returns, market_returns)
 
+    # Post-event data must cover the longest AR day — otherwise day-N
+    # features silently zero-fill and understate severity.
+    if len(abnormal_returns) - event_idx_returns - 1 < max(config.ar_days or [0]):
+        return None
+
     # AR at specific days (vectorized slice)
     ar_values = {}
     for day in config.ar_days:
@@ -287,9 +297,12 @@ def compute_features(
     car_short = compute_car_vec(abnormal_returns, config.car_short_start, config.car_short_end, event_idx_returns)
     car_long = compute_car_vec(abnormal_returns, config.car_long_start, config.car_long_end, event_idx_returns)
 
-    # Volatility and volume (vectorized)
+    # Volatility and volume (vectorized). Volume lives in price space while
+    # event_idx_returns is returns-space (one shorter after pct_change), so
+    # map the event date back to a price-space position first.
     vol_ratio = compute_volatility_ratio_vec(stock_returns, event_idx_returns)
-    vol_change = compute_volume_change_vec(stock["Volume"], event_idx_returns)
+    event_idx_price = int(common_dates.get_indexer([common_return_dates[event_idx_returns]])[0])
+    vol_change = compute_volume_change_vec(stock["Volume"], event_idx_price)
 
     # Recovery time
     pre_prices = stock["Close"].iloc[max(0, event_idx - 5):event_idx]

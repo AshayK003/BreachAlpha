@@ -11,6 +11,7 @@ from breachalpha.model import (
     predict_severity,
     prepare_training_data,
     FEATURE_COLS,
+    TRAIN_FEATURE_COLS,
 )
 
 
@@ -41,7 +42,9 @@ class TestPrepareData:
     def test_feature_columns(self):
         df = _make_synthetic_features(50)
         X, y = prepare_training_data(df)
-        assert all(col in X.columns for col in FEATURE_COLS)
+        assert all(col in X.columns for col in TRAIN_FEATURE_COLS)
+        # Label source must never be a model input (target leakage guard)
+        assert "car_minus5_plus30" not in X.columns
 
     def test_no_nan_in_features(self):
         df = _make_synthetic_features(50)

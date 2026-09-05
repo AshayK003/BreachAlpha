@@ -5,7 +5,7 @@ import pandas as pd
 import pytest
 
 from breachalpha.services.model import get_or_train_model, score_features, batch_score
-from breachalpha.core.constants import FEATURE_COLS, SEVERITY_LABELS, RISK_WEIGHTS
+from breachalpha.core.constants import TRAIN_FEATURE_COLS, SEVERITY_LABELS, RISK_WEIGHTS
 
 
 class TestGetOrTrainModel:
@@ -19,7 +19,7 @@ class TestGetOrTrainModel:
         """Same input should produce same output (model is deterministic after training)."""
         model = get_or_train_model()
         np.random.seed(42)
-        features = pd.DataFrame({col: [np.random.randn() * 0.05] for col in FEATURE_COLS})
+        features = pd.DataFrame({col: [np.random.randn() * 0.05] for col in TRAIN_FEATURE_COLS})
         pred1 = model.predict(features)
         pred2 = model.predict(features)
         np.testing.assert_array_equal(pred1, pred2)

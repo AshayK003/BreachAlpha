@@ -33,6 +33,15 @@ FEATURE_COLS: list[str] = [
     "pwn_count",
 ]
 
+# ── Label Leakage Guard ───────────────────────────────────────────────
+# car_minus5_plus30 generates the target label (see classify_severity) — it
+# must never be a model input, or the classifier learns the threshold
+# function and CV accuracy is inflated. TRAIN_FEATURE_COLS is the only
+# column list used for training AND serving (positional XGBoost needs both
+# sides identical). FEATURE_COLS stays complete for display/compat.
+LABEL_COLS = {"car_minus5_plus30"}
+TRAIN_FEATURE_COLS: list[str] = [c for c in FEATURE_COLS if c not in LABEL_COLS]
+
 # ── Severity Labels ─────────────────────────────────────────────────────
 # Used in: model.py, feature_engine.py, server.py, explainability.py
 SEVERITY_LABELS: list[str] = ["low", "medium", "high", "critical"]

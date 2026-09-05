@@ -251,7 +251,7 @@ def _search_news_breaches(company: str, limit: int) -> list[BreachIncident]:
             try:
                 data = resp.json()
                 news = data.get("news", [])
-            except Exception:
+            except (ValueError, AttributeError):
                 continue
 
             for article in news:
@@ -342,8 +342,8 @@ def _search_sec_filings(company: str, limit: int) -> list[BreachIncident]:
                             description=f"SEC 8-K cybersecurity disclosure: {title}",
                             confidence=0.7,
                         ))
-            except Exception:
-                pass
+            except (ValueError, KeyError, IndexError, TypeError) as e:
+                logger.debug("Skipping malformed SEC filing record: %s", e)
 
     except Exception as e:
         logger.debug("SEC search failed for %s: %s", company, e)
