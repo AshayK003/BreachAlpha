@@ -16,6 +16,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.responses import JSONResponse
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -120,14 +121,12 @@ class AdminAuthMiddleware(BaseHTTPMiddleware):
         )
         if is_admin:
             if not _ADMIN_KEY:
-                from starlette.responses import JSONResponse
                 return JSONResponse(
                     status_code=503,
                     content={"detail": "Admin endpoints disabled. Set BREACHALPHA_ADMIN_KEY environment variable."},
                 )
             key = request.headers.get("X-Admin-Key", "")
             if not hmac.compare_digest(key, _ADMIN_KEY):
-                from starlette.responses import JSONResponse
                 return JSONResponse(
                     status_code=401,
                     content={"detail": "Invalid or missing X-Admin-Key header"},
