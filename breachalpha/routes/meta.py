@@ -18,6 +18,8 @@ from ..stock_loader import (
 )
 from ..feature_engine import BreachEvent, compute_features
 from ..services.model import get_or_train_model, predict_severity
+from .. import __version__
+
 import pandas as pd
 
 
@@ -31,7 +33,7 @@ def create_meta_routes(limiter) -> APIRouter:
         return HealthResponse(
             status="ok",
             model_loaded=model is not None,
-            version="0.1.0",
+            version= __version__,
         )
 
     @router.get("/api/demo", response_model=list[DemoCase])

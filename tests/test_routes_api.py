@@ -3,6 +3,8 @@
 import pytest
 from unittest.mock import patch, MagicMock
 
+from breachalpha import __version__
+
 
 class TestHealthEndpoint:
     def test_health_returns_ok(self, client):
@@ -10,7 +12,7 @@ class TestHealthEndpoint:
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "ok"
-        assert data["version"] == "0.1.0"
+        assert data["version"] == __version__
 
     def test_health_reports_model_status(self, client):
         response = client.get("/api/health")

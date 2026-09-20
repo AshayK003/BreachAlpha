@@ -4,6 +4,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from breachalpha.server import app
+from breachalpha import __version__
 
 client = TestClient(app)
 
@@ -15,7 +16,7 @@ class TestHealth:
         data = response.json()
         assert data["status"] == "ok"
         assert "model_loaded" in data
-        assert data["version"] == "0.1.0"
+        assert data["version"] == __version__
 
 
 class TestScore:
